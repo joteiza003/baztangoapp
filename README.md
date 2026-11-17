@@ -16,7 +16,7 @@ La interfaz se publica en GitHub Pages desde `main:/docs`. El backend se instala
 8. Accede desde la web publicada y verifica: contraseña incorrecta → acceso denegado; correcta con colecciones vacías → sin ediciones/datos publicados. Comprueba también que una consulta directa sin `Authorization` devuelve 401 y que un origen diferente devuelve 403. No pegues contraseñas/tokens en comandos guardados, capturas o incidencias públicas.
 9. La primera copia real deberá cargarla un proceso administrativo independiente con el contrato de `CARGA_DATOS.md`. Hasta entonces no hay datos reales conectados. La implementación entregada no contiene exportador ni sincronizador del gestor.
 
-El usuario ha comunicado que ha completado la preparación en Wix, incluido el secret y los archivos backend. Las comprobaciones anónimas confirman que el endpoint está publicado y protege el acceso. El login autorizado, los permisos de las colecciones y la primera copia real todavía requieren comprobación por el operador. Las pruebas locales usan exclusivamente datos ficticios.
+El usuario ha completado la preparación en Wix, incluido el secret y los archivos backend. Se ha verificado el acceso real: el usuario introduce la contraseña de forma privada, confirma que funciona y la página muestra sesión abierta con Acceso de consulta y Cerrar sesión. El estado actual es Sin datos publicados. Sigue pendiente una copia real validada del gestor; los permisos de las colecciones requieren su comprobación administrativa. Las pruebas locales usan exclusivamente datos ficticios.
 
 ## IDs reales de las colecciones de este sitio
 
