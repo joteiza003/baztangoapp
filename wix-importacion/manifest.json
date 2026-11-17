@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "createdDate": "2026-11-17",
+  "containsRealData": false,
+  "collections": [
+    {
+      "collectionId": "BTEventos",
+      "file": "01_BTEventos.csv",
+      "customFieldCount": 12,
+      "exampleSystemId": "0efff940-7751-5ad3-a60a-9ee755e29ff3",
+      "private": true
+    },
+    {
+      "collectionId": "BTVersiones",
+      "file": "02_BTVersiones.csv",
+      "customFieldCount": 13,
+      "exampleSystemId": "de14b7e2-facc-5082-a48e-ac751cd4a163",
+      "private": true
+    },
+    {
+      "collectionId": "BTReservas",
+      "file": "03_BTReservas.csv",
+      "customFieldCount": 12,
+      "exampleSystemId": "cc6b1d6e-412e-55bc-a93d-a5ba5be31754",
+      "private": true
+    },
+    {
+      "collectionId": "BTPersonas",
+      "file": "04_BTPersonas.csv",
+      "customFieldCount": 46,
+      "exampleSystemId": "656803e8-86d3-57d1-a273-61bd720ceab9",
+      "private": true
+    },
+    {
+      "collectionId": "BTPagos",
+      "file": "05_BTPagos.csv",
+      "customFieldCount": 21,
+      "exampleSystemId": "8858fba8-79e6-5b06-ac4b-1e0041ac4899",
+      "private": true
+    },
+    {
+      "collectionId": "BTImputaciones",
+      "file": "06_BTImputaciones.csv",
+      "customFieldCount": 10,
+      "exampleSystemId": "8b473cd9-877b-5daf-a7c5-660f3ad60d92",
+      "private": true
+    },
+    {
+      "collectionId": "BTActividades",
+      "file": "07_BTActividades.csv",
+      "customFieldCount": 17,
+      "exampleSystemId": "1e8c88ca-cf25-56a4-a113-db7ac3263ed5",
+      "private": true
+    },
+    {
+      "collectionId": "BTParticipaciones",
+      "file": "08_BTParticipaciones.csv",
+      "customFieldCount": 16,
+      "exampleSystemId": "3dbd894b-ff51-56f0-aeb3-e7b4f357203a",
+      "private": true
+    },
+    {
+      "collectionId": "BTHabitaciones",
+      "file": "09_BTHabitaciones.csv",
+      "customFieldCount": 12,
+      "exampleSystemId": "4d6c13c5-3313-5a95-a5ad-6330384a2482",
+      "private": true
+    },
+    {
+      "collectionId": "BTEstancias",
+      "file": "10_BTEstancias.csv",
+      "customFieldCount": 13,
+      "exampleSystemId": "58a68e23-ae27-53e9-a445-13db6fc53d13",
+      "private": true
+    },
+    {
+      "collectionId": "BTCajas",
+      "file": "11_BTCajas.csv",
+      "customFieldCount": 28,
+      "exampleSystemId": "9ad5ba83-8ef7-546f-aa44-95d23f1732cf",
+      "private": true
+    },
+    {
+      "collectionId": "BTMovimientos",
+      "file": "12_BTMovimientos.csv",
+      "customFieldCount": 17,
+      "exampleSystemId": "fd848f60-58aa-51f8-acbf-3a189e7b6c82",
+      "private": true
+    },
+    {
+      "collectionId": "BTGastos",
+      "file": "13_BTGastos.csv",
+      "customFieldCount": 15,
+      "exampleSystemId": "e1196af6-8961-576f-a08a-700db27e6073",
+      "private": true
+    },
+    {
+      "collectionId": "BTSolicitudes",
+      "file": "14_BTSolicitudes.csv",
+      "customFieldCount": 22,
+      "exampleSystemId": "cc638f90-22a4-53fe-a1ac-96278668da13",
+      "private": true
+    }
+  ],
+  "totalCustomFields": 254
+}

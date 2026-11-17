@@ -1,0 +1,2 @@
+﻿_id,title,key,eventRef,versionRef,sourceId,sourceUpdatedAt,concept,supplier,category,expenseDate,dueDate,totalCents,paidCents,pendingCents,state
+e1196af6-8961-576f-a08a-700db27e6073,EJEMPLO - BTGastos,de14b7e2-facc-5082-a48e-ac751cd4a163:BTGastos:example-BTGastos,0efff940-7751-5ad3-a60a-9ee755e29ff3,de14b7e2-facc-5082-a48e-ac751cd4a163,example-BTGastos,Tue Nov 17 2026 13:00:00 GMT+0100 (hora estándar de Europa central),EJEMPLO - Gasto previsto,Proveedor ficticio,,2026-11-17,2026-11-20,5000,0,5000,unpaid

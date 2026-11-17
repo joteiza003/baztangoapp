@@ -1,0 +1,109 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRepository } from '../wix/repository.js';
+import { project, schema } from '../wix/schema.js';
+import { readFile } from 'node:fs/promises';
+
+const scope = { eventRef: 'e1', versionRef: 'v1' };
+function database(extra = {}) {
+  const tables = { BTEventos: [{ _id: 'e1', isActive: true, currentVersionRef: 'v1' }], BTVersiones: [{ _id: 'v1', eventRef: 'e1', state: 'ready', publishedAt: '2026-11-17', schemaVersion: 1 }], ...extra };
+  const calls = [];
+  return { tables, calls, get: async (table, id) => tables[table]?.find((row) => row._id === id), query(table) {
+    const predicates = [];
+    let offset = 0;
+    let size = 50;
+    const query = {
+      eq(field, value) { predicates.push((row) => row[field] === value); return query; },
+      ne(field, value) { predicates.push((row) => row[field] !== value); return query; },
+      contains(field, value) { predicates.push((row) => String(row[field] || '').includes(value)); return query; },
+      hasSome(field, values) { predicates.push((row) => values.includes(row[field])); return query; },
+      ascending() { return query; }, descending() { return query; },
+      skip(value) { offset = value; return query; }, limit(value) { size = value; return query; },
+      async find(options) { calls.push({ table, options }); const rows = (tables[table] || []).filter((row) => predicates.every((predicate) => predicate(row))); return { totalCount: rows.length, items: rows.slice(offset, offset + size) }; },
+      async count(options) { return (await query.find(options)).totalCount; }
+    };
+    return query;
+  } };
+}
+test('rejects incomplete, foreign, inactive and stale versions', async () => {
+  for (const change of [{ state: 'loading' }, { eventRef: 'other' }, { publishedAt: null }, { schemaVersion: 2 }]) {
+    const data = database(); Object.assign(data.tables.BTVersiones[0], change);
+    await assert.rejects(createRepository(data).context('e1', 'v1'), { code: 'NO_PUBLISHED_DATA' });
+  }
+  const data = database();
+  await assert.rejects(createRepository(data).context('e1', 'old'), { code: 'VERSION_EXPIRED' });
+  data.tables.BTEventos[0].isActive = false;
+  await assert.rejects(createRepository(data).context('e1'), { code: 'ACCESS_DENIED' });
+});
+test('list filters and paginates only the selected snapshot and excludes sensitive fields', async () => {
+  const data = database({ BTPersonas: [{ _id: 'p1', ...scope, state: 'accepted', searchText: 'inigo', email: 'ficticio@example.invalid', dietaryNotes: 'privado' }, { _id: 'p2', ...scope, state: 'cancelled' }, { _id: 'p3', ...scope, versionRef: 'v2', state: 'accepted' }] });
+  const result = await createRepository(data).list({ resource: 'personas', eventId: 'e1', versionId: 'v1', filters: { state: 'accepted' }, search: 'inigo', page: 0, limit: 25 });
+  assert.equal(result.total, 1);
+  assert.equal(result.items[0]._id, 'p1');
+  for (const field of ['email', 'dietaryNotes', 'searchText']) assert.equal(field in result.items[0], false);
+  assert.ok(data.calls.every((call) => call.options.consistentRead && call.options.suppressAuth));
+});
+test('never offsets individual debt with overpayment, includes obligations of cancellations', async () => {
+  const data = database({ BTPersonas: [{ _id: 'p1', ...scope, state: 'accepted', pendingCents: 10000, paidNetCents: 0 }, { _id: 'p2', ...scope, state: 'accepted', pendingCents: 0, overpaidCents: 20000 }, { _id: 'p3', ...scope, state: 'cancelled', pendingCents: 1500 }] });
+  const result = await createRepository(data).summary('e1', 'v1');
+  assert.equal(result.accepted, 2); assert.equal(result.pendingCents, 11500);
+  delete data.tables.BTPersonas[0].pendingCents;
+  assert.equal((await createRepository(data).summary('e1', 'v1')).pendingCents, null);
+});
+test('detail refuses cross-version references', async () => {
+  const data = database({ BTPersonas: [{ _id: 'p1', ...scope, reservationRef: 'r1' }], BTReservas: [{ _id: 'r1', ...scope, versionRef: 'v2' }] });
+  await assert.rejects(createRepository(data).detail('e1', 'v1', 'p1'), { code: 'INVALID_REFERENCE' });
+});
+test('lookup cannot filter by reference to a foreign snapshot', async () => {
+  const data = database({ BTActividades: [{ _id: 'a1', eventRef: 'e2', versionRef: 'v2' }] });
+  await assert.rejects(createRepository(data).list({ resource: 'participaciones', eventId: 'e1', versionId: 'v1', filters: { activityRef: 'a1' }, search: '', page: 0, limit: 25 }), { code: 'INVALID_REFERENCE' });
+});
+test('shared payment remains one movement and separate allocations', async () => {
+  const data = database({ BTPersonas: [{ _id: 'p1', ...scope, reservationRef: 'r1' }, { _id: 'p2', ...scope, reservationRef: 'r1' }], BTReservas: [{ _id: 'r1', ...scope }], BTPagos: [{ _id: 'pay1', ...scope, amountCents: 20000 }], BTImputaciones: [{ _id: 'i1', ...scope, personRef: 'p1', paymentRef: 'pay1', amountCents: 10000 }, { _id: 'i2', ...scope, personRef: 'p2', paymentRef: 'pay1', amountCents: 10000 }] });
+  const result = await createRepository(data).detail('e1', 'v1', 'p1');
+  assert.equal(result.payments.length, 1); assert.equal(result.allocations.length, 1); assert.equal(result.allocations[0].amountCents, 10000);
+});
+test('projection fields match the delivered 14-collection dictionary', async () => {
+  const dictionary = await readFile(new URL('../wix-importacion/COLECCIONES_WIX.md', import.meta.url), 'utf8');
+  for (const [resource, [collection, fields]] of Object.entries(schema)) {
+    const section = dictionary.split(new RegExp(`## \\d+\\. ${collection} `))[1]?.split(/\n## /)[0];
+    assert.ok(section, collection);
+    for (const field of fields.split(' ')) assert.ok(section.includes(`\x60${field}\x60`), `${resource}.${field}`);
+  }
+  assert.equal(project('personas', { searchText: 'private', email: 'private' }).email, undefined);
+});
+test('activity counts unique people, excludes inactive rights and retains attendance incidents', async () => {
+  const data = database({ BTActividades: [{ _id: 'a1', ...scope, category: 'meal' }], BTPersonas: [{ _id: 'p1', ...scope, state: 'accepted', dietaryNotes: 'ficticio', dietaryKnown: true }, { _id: 'p2', ...scope, state: 'cancelled' }], BTParticipaciones: [{ _id: 'x1', ...scope, personRef: 'p1', activityRef: 'a1', entitlement: 'included', eligible: true, attendanceState: 'notRegistered', validRecordCount: 0 }, { _id: 'x2', ...scope, personRef: 'p2', activityRef: 'a1', entitlement: 'none', eligible: false, attendanceState: 'registered', validRecordCount: 4 }] });
+  const repo = createRepository(data);
+  const result = await repo.activityDetail('e1', 'v1', 'a1', { group: 'missing', search: '', page: 0, limit: 25 });
+  assert.deepEqual(result.counts, { entitled: 1, registered: 1, missing: 1, issues: 1 });
+  assert.equal(result.items[0].person.dietaryNotes, 'ficticio');
+  data.tables.BTActividades[0].category = 'class';
+  assert.equal((await repo.activityDetail('e1', 'v1', 'a1', { group: 'missing', search: '', page: 0, limit: 25 })).items[0].person.dietaryNotes, undefined);
+});
+test('room occupancy uses departure-exclusive nights and actual apartment capacity', async () => {
+  const data = database({ BTHabitaciones: [{ _id: 'r1', ...scope, roomType: 'apartment', capacity: 5, isAvailable: true }], BTPersonas: [{ _id: 'p1', ...scope }, { _id: 'p2', ...scope }], BTEstancias: [{ _id: 's1', ...scope, personRef: 'p1', roomRef: 'r1', state: 'reserved', checkInDate: '2026-11-20', checkOutDate: '2026-11-22' }, { _id: 's2', ...scope, personRef: 'p2', roomRef: 'r1', state: 'reserved', checkInDate: '2026-11-22', checkOutDate: '2026-11-23' }] });
+  const result = await createRepository(data).roomDetail('e1', 'v1', 'r1', '2026-11-22');
+  assert.equal(result.assigned, 1); assert.equal(result.free, 4); assert.equal(result.items[0].person._id, 'p2');
+  delete data.tables.BTEstancias[0].checkOutDate;
+  assert.equal((await createRepository(data).roomDetail('e1', 'v1', 'r1', '2026-11-22')).free, null);
+});
+test('no route reassigns late night movements or invents reconciliation', async () => {
+  const data = database({ BTCajas: [{ _id: 'c1', ...scope, businessDate: '2026-11-20', countedCashCents: null }], BTMovimientos: [{ _id: 'm1', ...scope, cashSessionRef: 'c1', businessDate: '2026-11-20', occurredAt: '2026-11-21T01:00:00Z', amountCents: 100 }] });
+  const result = await createRepository(data).list({ resource: 'movimientos', eventId: 'e1', versionId: 'v1', search: '', filters: { cashSessionRef: 'c1' }, page: 0, limit: 25 });
+  assert.equal(result.items[0].businessDate, '2026-11-20');
+  assert.equal(project('cajas', data.tables.BTCajas[0]).countedCashCents, null);
+  assert.equal(project('cajas', data.tables.BTCajas[0]).cashDifferenceCents, undefined);
+});
+test('accent-insensitive searches work on original activity names and concepts', async () => {
+  const data = database({ BTActividades: [{ _id: 'a1', ...scope, name: 'Cóctel de bienvenida' }] });
+  const result = await createRepository(data).list({ resource: 'actividades', eventId: 'e1', versionId: 'v1', search: 'coctel', filters: {}, page: 0, limit: 25 });
+  assert.equal(result.total, 1);
+});
+test('expense payment lookup validates the referenced expense snapshot', async () => {
+  const data = database({ BTGastos: [{ _id: 'g1', ...scope }], BTMovimientos: [{ _id: 'm1', ...scope, expenseRef: 'g1', amountCents: -1000 }] });
+  const request = { resource: 'movimientos', eventId: 'e1', versionId: 'v1', search: '', filters: { expenseRef: 'g1' }, page: 0, limit: 25 };
+  assert.equal((await createRepository(data).list(request)).total, 1);
+  data.tables.BTGastos[0].versionRef = 'v2';
+  await assert.rejects(createRepository(data).list(request), { code: 'INVALID_REFERENCE' });
+});

@@ -1,0 +1,2 @@
+﻿_id,title,eventKey,sourceEditionId,year,startDate,endDate,timeZone,currency,isActive,currentVersionRef,warningMinutes,staleMinutes
+0efff940-7751-5ad3-a60a-9ee755e29ff3,EJEMPLO - Edición de prueba,ejemplo-importacion-2026,example-edition,2026,2026-11-17,2026-11-20,Europe/Madrid,EUR,false,,5,15

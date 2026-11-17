@@ -1,0 +1,2 @@
+﻿_id,title,key,eventRef,versionRef,sourceId,sourceUpdatedAt,unitCode,hotelRoomNumber,roomType,capacity,area,isAvailable
+4d6c13c5-3313-5a95-a5ad-6330384a2482,EJEMPLO - BTHabitaciones,de14b7e2-facc-5082-a48e-ac751cd4a163:BTHabitaciones:example-BTHabitaciones,0efff940-7751-5ad3-a60a-9ee755e29ff3,de14b7e2-facc-5082-a48e-ac751cd4a163,example-BTHabitaciones,Tue Nov 17 2026 13:00:00 GMT+0100 (hora estándar de Europa central),EJEMPLO-HAB-001,,single,1,,true

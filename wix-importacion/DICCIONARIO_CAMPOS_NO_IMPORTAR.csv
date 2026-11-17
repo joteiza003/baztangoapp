@@ -1,0 +1,255 @@
+﻿collectionId,fieldId,label,wixType,requiredInLoad,defaultValue,referenceCollection,rule
+BTEventos,title,Nombre,"Texto, principal",true,sin defecto,,Ej. Baztango 20
+BTEventos,eventKey,Clave de edición,Texto,true,sin defecto,,"Única y estable, ej. baztango-2026; no usar solo el nombre visible"
+BTEventos,sourceEditionId,ID edición origen,Texto,true,sin defecto,,ID del gestor más identidad del archivo origen si fuera necesario
+BTEventos,year,Año,Número,true,sin defecto,,"Entero, cuatro cifras"
+BTEventos,startDate,Inicio,Texto,true,sin defecto,,ISO civil
+BTEventos,endDate,Fin,Texto,true,sin defecto,,"ISO civil, igual o posterior al inicio"
+BTEventos,timeZone,Zona horaria,Texto,true,Europe/Madrid,,Identificador IANA
+BTEventos,currency,Moneda,Texto,true,EUR,,Esta versión del contrato solo admite EUR
+BTEventos,isActive,Visible en selector,Booleano,true,false,,No equivale a edición vigente en el gestor
+BTEventos,currentVersionRef,Copia publicada,Referencia a BTVersiones,false,sin defecto,BTVersiones,Vacía hasta primera publicación completa; el evento de la versión debe coincidir
+BTEventos,warningMinutes,Aviso de antigüedad,Número,true,5,,"Entero positivo, usado durante fechas del evento"
+BTEventos,staleMinutes,Antigüedad destacada,Número,true,15,,Entero mayor o igual que warningMinutes
+BTVersiones,title,Nombre,"Texto, principal",true,sin defecto,,Etiqueta de la copia
+BTVersiones,versionKey,Clave de versión,Texto,true,sin defecto,,"Única global, generada por cargador"
+BTVersiones,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Una versión pertenece a un evento
+BTVersiones,state,Estado de carga,Texto,true,loading,,loading / ready / failed
+BTVersiones,capturedAt,Capturado en gestor,Fecha y hora,true,sin defecto,,"Momento de la copia consistente, no última apertura del navegador"
+BTVersiones,publishedAt,Publicado,Fecha y hora,false,sin defecto,,Solo después de validar y activar el puntero
+BTVersiones,schemaVersion,Versión de esquema,Número,true,1,,"Entero, contrato de campos"
+BTVersiones,sourceLabel,Identidad de origen,Texto,true,sin defecto,,Identificador lógico; sin rutas privadas del ordenador
+BTVersiones,contentHash,Huella de contenido,Texto,true,sin defecto,,Huella del conjunto normalizado; no datos personales
+BTVersiones,personCount,Personas publicadas,Número,true,sin defecto,,"Entero >= 0, total físico de BTPersonas de la versión"
+BTVersiones,paymentCount,Pagos publicados,Número,true,sin defecto,,"Entero >= 0, movimientos únicos"
+BTVersiones,recordCount,Registros publicados,Número,true,sin defecto,,Entero >= 0; suma de filas de las 12 colecciones de datos
+BTVersiones,validationSummary,Resumen de validación,Texto,false,sin defecto,,Resumen sin información personal ni errores internos sensibles
+BTReservas,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTReservas,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTReservas,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTReservas,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTReservas,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTReservas,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTReservas,reservationCode,Código de reserva,Texto,true,sin defecto,,"ID BASE literal, único dentro de la versión"
+BTReservas,webId,Referencia web,Texto,false,sin defecto,,No es una identidad de persona
+BTReservas,sourceState,Estado de origen,Texto,true,sin defecto,,Valor original normalizado/documentado; no inventar accepted
+BTReservas,packageName,Paquete de reserva,Texto,false,sin defecto,,La ficha muestra también paquete de persona cuando difiere
+BTReservas,sourceChannel,Canal,Texto,false,sin defecto,,web / manual / otro valor mapeado
+BTReservas,registeredAt,Fecha de alta,Fecha y hora,false,sin defecto,,"Si la fuente solo tiene día, no inventar hora"
+BTPersonas,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTPersonas,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTPersonas,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTPersonas,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTPersonas,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTPersonas,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTPersonas,reservationRef,Reserva,Referencia a BTReservas,true,sin defecto,BTReservas,Misma versión
+BTPersonas,personCode,ID individual,Texto,true,sin defecto,,"ID INDIVIDUAL literal, único por versión"
+BTPersonas,firstName,Nombre,Texto,true,sin defecto,,No deducir sexo o rol del nombre
+BTPersonas,lastName,Apellidos,Texto,false,sin defecto,,Conserva ambos apellidos cuando existan
+BTPersonas,fullName,Nombre completo,Texto,true,sin defecto,,Visible; title puede repetirlo
+BTPersonas,searchText,Texto de búsqueda,Texto,true,sin defecto,,"Nombre/IDs/correo/teléfono normalizados; privado, no devolver al frontend"
+BTPersonas,state,Estado operativo,Texto,true,sin defecto,,accepted / cancelled / review; rechazo/espera van en solicitudes
+BTPersonas,sourceState,Estado original,Texto,false,sin defecto,,Para trazabilidad sin perder equivalencias
+BTPersonas,packageName,Paquete,Texto,false,sin defecto,,Paquete vigente por persona
+BTPersonas,danceRole,Rol de baile,Texto,true,unknown,,leader / follower / both / unknown
+BTPersonas,gender,Género declarado,Texto,false,sin defecto,,Solo si el gestor lo informa; no hace falta en la tabla principal
+BTPersonas,isTeam,Equipo,Booleano,true,false,,Contempla marca y paquete según regla del gestor
+BTPersonas,isGuest,Invitado,Booleano,true,false,,No implica acceso a todas las actividades
+BTPersonas,country,País / región,Texto,false,sin defecto,,Normalización controlada; no confundir con nacionalidad
+BTPersonas,nationality,Nacionalidad,Texto,false,sin defecto,,Valor informado
+BTPersonas,city,Ciudad,Texto,false,sin defecto,,Únicamente para contexto/recuentos
+BTPersonas,email,Correo,Texto,false,sin defecto,,"Dato personal; validar formato cuando exista, no obligatorio"
+BTPersonas,phone,Teléfono,Texto,false,sin defecto,,Preserva + y ceros; no Número
+BTPersonas,dietaryNotes,Necesidad alimentaria,Texto,false,sin defecto,,Sin dato no implica ausencia confirmada de intolerancias
+BTPersonas,dietaryKnown,Información alimentaria conocida,Booleano,true,false,,"Solo true cuando la fuente confirma su contenido, incluso ninguna"
+BTPersonas,operationNote,Nota operativa,Texto,false,sin defecto,,"Proyección mínima revisada, no observaciones internas completas"
+BTPersonas,arrivalState,Llegada general,Texto,true,unknown,,registered / notRegistered / unknown; no equivale a ubicación actual
+BTPersonas,arrivedAt,Hora de llegada registrada,Fecha y hora,false,sin defecto,,Solo registro válido de llegada general
+BTPersonas,arrivalDate,Día de llegada registrada,Texto,false,sin defecto,,"ISO civil; conserva llegadas con fecha pero sin hora, sin inventar instante"
+BTPersonas,cancelledAt,Fecha de baja,Fecha y hora,false,sin defecto,,"Si solo existe fecha civil, conservarla en cancelDate"
+BTPersonas,cancelDate,Día de baja,Texto,false,sin defecto,,"ISO civil, sin inferir hora"
+BTPersonas,eventDueCents,Exigible evento,Número,false,sin defecto,,Entero >= 0; proyección del servicio
+BTPersonas,hotelDueCents,Exigible hotel,Número,false,sin defecto,,Entero >= 0
+BTPersonas,dueCents,Exigible total,Número,false,sin defecto,,Evento + hotel si ambos son conocidos
+BTPersonas,advanceNetCents,Anticipo neto,Número,false,sin defecto,,"Neto según reglas actuales, no resta ingenua de columnas"
+BTPersonas,eventPaidNetCents,Cobrado neto en evento,Número,false,sin defecto,,Puede ser negativo tras devoluciones de anticipos en evento
+BTPersonas,hotelDirectPaidCents,Pagado directamente al hotel,Número,false,sin defecto,,No sumar otra vez el destino hotel de un pago del evento
+BTPersonas,paidNetCents,Cobrado neto total,Número,false,sin defecto,,Proyección canónica; no deducir dos veces pagos hotel
+BTPersonas,pendingCents,Pendiente de cobro,Número,false,sin defecto,,"Entero >= 0; max(exigible - cobrado neto, 0) por persona"
+BTPersonas,overpaidCents,Exceso de cobro,Número,false,sin defecto,,Entero >= 0; no compensar deudas ajenas
+BTPersonas,refundPendingCents,Devolución pendiente,Número,false,sin defecto,,"Entero >= 0; dato de obligación vigente, distinto de sobrepago"
+BTPersonas,paymentState,Situación económica,Texto,true,unknown,,unpaid / partial / pendingHotel / pendingEvent / settled / overpaid / unknown
+BTPersonas,hasDataIssues,Datos por revisar,Booleano,true,false,,Derivado de la lista cerrada de condiciones del diseño funcional
+BTPersonas,dataIssueCodes,Códigos de incidencia,Texto,false,sin defecto,,Conjunto ordenado separado por `|`: stateUnresolved / financeUnknown / arrivalMismatch / eligibilityUnknown / stayDatesMissing
+BTPersonas,dataIssueDetail,Motivo visible,Texto,false,sin defecto,,"Explicación breve para el listado de datos incompletos, sin errores internos"
+BTPagos,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTPagos,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTPagos,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTPagos,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTPagos,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTPagos,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTPagos,reservationRef,Reserva,Referencia a BTReservas,false,sin defecto,BTReservas,Vacía si no se puede asignar con certeza
+BTPagos,payerRef,Pagador,Referencia a BTPersonas,false,sin defecto,BTPersonas,No equivale a todas las personas beneficiarias
+BTPagos,payerName,Nombre de pagador,Texto,false,sin defecto,,Texto de origen para casos no enlazados
+BTPagos,paymentCode,Código de movimiento,Texto,true,sin defecto,,Identidad económica canónica; única por versión
+BTPagos,externalReference,Referencia externa,Texto,false,sin defecto,,"Referencia operativa, sin IBAN ni datos de tarjeta"
+BTPagos,occurredAt,Instante,Fecha y hora,false,sin defecto,,Solo si existe hora real
+BTPagos,paymentDate,Día contable,Texto,true,sin defecto,,ISO civil
+BTPagos,kind,Tipo,Texto,true,sin defecto,,advance / event / refund / other
+BTPagos,method,Método,Texto,true,unknown,,cash / card / bizum / transfer / accountingCancellation / other / unknown
+BTPagos,destination,Destino,Texto,true,unassigned,,event / hotel / mixed / unassigned
+BTPagos,receivedBy,Receptor del dinero,Texto,true,unknown,,organization / hotel / unknown; distinto del destino contable
+BTPagos,amountCents,Importe con signo,Número,true,sin defecto,,"Cobro positivo, devolución real negativa; anulación contable no es salida física"
+BTPagos,state,Estado,Texto,true,sin defecto,,valid / voided / review
+BTPagos,originPaymentRef,Movimiento original,Referencia a BTPagos,false,sin defecto,BTPagos,Para devolución/reversión cuando existe vínculo real
+BTPagos,note,Nota de consulta,Texto,false,sin defecto,,Solo nota operativa permitida
+BTImputaciones,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTImputaciones,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTImputaciones,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTImputaciones,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTImputaciones,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTImputaciones,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTImputaciones,paymentRef,Movimiento,Referencia a BTPagos,true,sin defecto,BTPagos,Misma versión
+BTImputaciones,personRef,Persona,Referencia a BTPersonas,true,sin defecto,BTPersonas,Misma versión
+BTImputaciones,destination,Destino de la parte,Texto,true,unassigned,,event / hotel / unassigned
+BTImputaciones,amountCents,Importe imputado,Número,true,sin defecto,,Con signo coherente con el pago
+BTActividades,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTActividades,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTActividades,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTActividades,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTActividades,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTActividades,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTActividades,activityCode,Código de actividad,Texto,true,sin defecto,,Identidad estable por edición; no usar solo etiqueta/hora
+BTActividades,name,Nombre,Texto,true,sin defecto,,Etiqueta visible del catálogo actual
+BTActividades,category,Familia,Texto,true,sin defecto,,meal / milonga / class / social / arrival
+BTActividades,eventDate,Jornada,Texto,true,sin defecto,,"ISO civil de programa, no cambia a medianoche"
+BTActividades,startsAt,Inicio,Fecha y hora,false,sin defecto,,null si no se conoce
+BTActividades,endsAt,Fin,Fecha y hora,false,sin defecto,,Puede estar en día siguiente; posterior a inicio si se conoce
+BTActividades,timeConfirmed,Horario confirmado,Booleano,true,false,,"Según catálogo y revisión, no por mera existencia de una hora"
+BTActividades,venue,Espacio,Texto,false,sin defecto,,Solo información operativa
+BTActividades,capacity,Capacidad,Número,false,sin defecto,,Entero >= 0 si está establecida; no estimar
+BTActividades,sortOrder,Orden,Número,true,0,,Entero para desempates
+BTActividades,isGeneralArrival,Llegada general del evento,Booleano,true,false,,Solo puede ser true en categoría arrival; como máximo una por versión
+BTParticipaciones,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTParticipaciones,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTParticipaciones,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTParticipaciones,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTParticipaciones,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTParticipaciones,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTParticipaciones,personRef,Persona,Referencia a BTPersonas,true,sin defecto,BTPersonas,Misma versión
+BTParticipaciones,activityRef,Actividad,Referencia a BTActividades,true,sin defecto,BTActividades,Misma versión
+BTParticipaciones,entitlement,Derecho,Texto,true,unknown,,included / extra / none / unknown
+BTParticipaciones,eligible,Habilitado,Booleano,false,sin defecto,,null si no se ha podido resolver; false no significa null
+BTParticipaciones,attendanceState,Asistencia,Texto,true,unknown,,registered / notRegistered / unknown
+BTParticipaciones,firstRegisteredAt,Primer registro válido,Fecha y hora,false,sin defecto,,No inventar hora si solo existe fecha
+BTParticipaciones,registeredDate,Día del primer registro,Texto,false,sin defecto,,ISO civil si existe registro solo con fecha
+BTParticipaciones,validRecordCount,Registros válidos,Número,true,0,,Entero >= 0; el contador de personas sigue siendo 0/1
+BTParticipaciones,needsReview,Requiere revisión,Booleano,true,false,,"Ej. asistencia sin derecho, identidad dudosa"
+BTParticipaciones,reviewReason,Motivo de revisión,Texto,false,sin defecto,,Descripción operativa breve
+BTHabitaciones,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTHabitaciones,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTHabitaciones,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTHabitaciones,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTHabitaciones,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTHabitaciones,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTHabitaciones,unitCode,Código interno,Texto,true,sin defecto,,"Identidad de la unidad, incluidos APT1/APT2 cuando proceda"
+BTHabitaciones,hotelRoomNumber,Número del hotel,Texto,false,sin defecto,,Conserva letras/ceros; no sustituye el código interno
+BTHabitaciones,roomType,Tipo,Texto,true,unknown,,single / double / triple / apartment / other / unknown
+BTHabitaciones,capacity,Capacidad de personas,Número,false,sin defecto,,Entero positivo cuando se conoce
+BTHabitaciones,area,Edificio o zona,Texto,false,sin defecto,,Ubicación operativa si existe
+BTHabitaciones,isAvailable,En servicio,Booleano,true,true,,false si la unidad está fuera de servicio; no significa libre
+BTEstancias,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTEstancias,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTEstancias,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTEstancias,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTEstancias,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTEstancias,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTEstancias,personRef,Persona,Referencia a BTPersonas,true,sin defecto,BTPersonas,Misma versión
+BTEstancias,roomRef,Habitación,Referencia a BTHabitaciones,false,sin defecto,BTHabitaciones,"Vacía = sin asignar, no habitación desconocida inventada"
+BTEstancias,bookedRoomType,Tipo contratado,Texto,false,sin defecto,,Conserva tipo aun sin unidad asignada
+BTEstancias,checkInDate,Entrada,Texto,false,sin defecto,,ISO civil
+BTEstancias,checkOutDate,Salida,Texto,false,sin defecto,,"ISO civil, posterior a entrada para ocupación nocturna"
+BTEstancias,state,Estado,Texto,true,sin defecto,,reserved / cancelled / review
+BTEstancias,bedLabel,Plaza o cama,Texto,false,sin defecto,,Dato operativo si existe
+BTCajas,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTCajas,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTCajas,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTCajas,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTCajas,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTCajas,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTCajas,businessDate,Jornada,Texto,true,sin defecto,,ISO civil de la sesión
+BTCajas,openedAt,Apertura,Fecha y hora,false,sin defecto,,Momento real
+BTCajas,closedAt,Cierre,Fecha y hora,false,sin defecto,,null si abierta o pendiente
+BTCajas,state,Estado,Texto,true,sin defecto,,pending / open / closed / review
+BTCajas,openingFloatCents,Fondo,Número,false,sin defecto,,Entero >= 0 conocido
+BTCajas,grossReceiptsCents,Cobros brutos,Número,false,sin defecto,,"Sin devoluciones, según alcance del servicio"
+BTCajas,refundsCents,Devoluciones reales,Número,false,sin defecto,,Magnitud positiva; no incluye anulaciones
+BTCajas,cashNetCents,Cobro neto efectivo,Número,false,sin defecto,,Con signo
+BTCajas,cardNetCents,Cobro neto tarjeta,Número,false,sin defecto,,Con signo
+BTCajas,bizumNetCents,Cobro neto Bizum,Número,false,sin defecto,,Con signo
+BTCajas,transferNetCents,Transferencias netas,Número,false,sin defecto,,"Con signo, fuera del efectivo físico"
+BTCajas,expensesPaidCents,Gastos pagados,Número,false,sin defecto,,"Magnitud positiva, todos los métodos del alcance"
+BTCajas,withdrawalsCents,Retiradas de efectivo,Número,false,sin defecto,,Magnitud positiva
+BTCajas,expectedCashCents,Efectivo físico esperado,Número,false,sin defecto,,Proyección canónica con fondo y movimientos físicos
+BTCajas,countedCashCents,Efectivo contado,Número,false,sin defecto,,null si no hubo arqueo; normalizar si origen excluye fondo
+BTCajas,cashDifferenceCents,Diferencia de efectivo,Número,false,sin defecto,,Contado - esperado solo si ambos conocidos
+BTCajas,countedCardCents,Tarjeta contada,Número,false,sin defecto,,null sin dato
+BTCajas,cardDifferenceCents,Diferencia tarjeta,Número,false,sin defecto,,Regla canónica
+BTCajas,countedBizumCents,Bizum contado,Número,false,sin defecto,,null sin dato
+BTCajas,bizumDifferenceCents,Diferencia Bizum,Número,false,sin defecto,,Regla canónica
+BTCajas,operationCount,Número de operaciones,Número,true,sin defecto,,"Entero >= 0, definición del servicio"
+BTCajas,closingHash,Huella de cierre,Texto,false,sin defecto,,Permite detectar cambios posteriores
+BTMovimientos,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTMovimientos,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTMovimientos,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTMovimientos,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTMovimientos,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTMovimientos,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTMovimientos,cashSessionRef,Caja,Referencia a BTCajas,false,sin defecto,BTCajas,Vacía = sin asignar a una sesión
+BTMovimientos,paymentRef,Pago de cliente,Referencia a BTPagos,false,sin defecto,BTPagos,Solo movimientos que provienen de ese libro
+BTMovimientos,expenseRef,Gasto,Referencia a BTGastos,false,sin defecto,BTGastos,Si es pago de gasto
+BTMovimientos,kind,Tipo,Texto,true,sin defecto,,customerReceipt / customerRefund / expensePayment / openingFloat / contribution / withdrawal / adjustment
+BTMovimientos,method,Método,Texto,true,unknown,,cash / card / bizum / transfer / other / unknown
+BTMovimientos,occurredAt,Instante,Fecha y hora,false,sin defecto,,Sin hora no se inventa instante
+BTMovimientos,businessDate,Jornada informada,Texto,false,sin defecto,,Necesaria para gastos con día sin hora
+BTMovimientos,amountCents,Importe con signo,Número,true,sin defecto,,"Entrada +, salida -; fondo/aportación no son ingreso comercial"
+BTMovimientos,concept,Concepto,Texto,true,sin defecto,,Etiqueta breve y segura
+BTMovimientos,counterparty,Contraparte,Texto,false,sin defecto,,Persona/proveedor si procede
+BTMovimientos,state,Estado,Texto,true,sin defecto,,valid / voided / review
+BTGastos,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTGastos,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTGastos,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTGastos,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTGastos,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTGastos,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTGastos,concept,Concepto,Texto,true,sin defecto,,Concepto visible
+BTGastos,supplier,Proveedor,Texto,false,sin defecto,,"Nombre operativo, sin datos bancarios/fiscales"
+BTGastos,category,Categoría,Texto,false,sin defecto,,Catálogo del gestor
+BTGastos,expenseDate,Fecha del gasto,Texto,false,sin defecto,,ISO civil
+BTGastos,dueDate,Vencimiento,Texto,false,sin defecto,,ISO civil
+BTGastos,totalCents,Total,Número,false,sin defecto,,Entero >= 0
+BTGastos,paidCents,Pagado,Número,false,sin defecto,,Total efectivo de pagos vigentes
+BTGastos,pendingCents,Pendiente,Número,false,sin defecto,,Entero >= 0 por gasto
+BTGastos,state,Estado,Texto,true,unknown,,unpaid / partial / paid / overpaid / unknown
+BTSolicitudes,title,Nombre del elemento,"Texto, principal",true,sin defecto,,Etiqueta humana breve; nunca un payload completo
+BTSolicitudes,key,Clave única,Texto,true,sin defecto,,Índice único. Componer `versionId:dominio:sourceId`; escapar componentes para evitar colisiones
+BTSolicitudes,eventRef,Evento,Referencia a BTEventos,true,sin defecto,BTEventos,Debe coincidir con el evento de versionRef
+BTSolicitudes,versionRef,Versión,Referencia a BTVersiones,true,sin defecto,BTVersiones,Todas las referencias entre datos apuntan a esta misma versión
+BTSolicitudes,sourceId,ID del origen,Texto,true,sin defecto,,ID estable del registro o clave compuesta documentada del gestor
+BTSolicitudes,sourceUpdatedAt,Actualizado en origen,Fecha y hora,false,sin defecto,,Fecha real del origen si existe; no inventar la fecha de importación
+BTSolicitudes,requestCode,Código de solicitud,Texto,true,sin defecto,,"ID estable de solicitud, no reutilizar ID de persona"
+BTSolicitudes,webId,Referencia web,Texto,false,sin defecto,,Referencia informada
+BTSolicitudes,applicantNames,Solicitantes,Texto,true,sin defecto,,Nombres para consulta; no payload bruto
+BTSolicitudes,searchText,Texto de búsqueda,Texto,true,sin defecto,,"Privado, normalizado, con contacto si existe"
+BTSolicitudes,email,Correo,Texto,false,sin defecto,,Contacto solo en detalle
+BTSolicitudes,phone,Teléfono,Texto,false,sin defecto,,"Texto, no Número"
+BTSolicitudes,declaredPeopleCount,Personas declaradas,Número,true,sin defecto,,Entero >= 1; no sumar como aceptados
+BTSolicitudes,requestedPackage,Paquete solicitado,Texto,false,sin defecto,,Etiqueta del origen
+BTSolicitudes,requestedRole,Rol solicitado,Texto,true,unknown,,leader / follower / both / mixed / unknown
+BTSolicitudes,state,Clasificación,Texto,true,sin defecto,,review / waiting / rejected / promoted
+BTSolicitudes,sourceState,Estado original,Texto,true,sin defecto,,Ej. rejected no equivale siempre a rechazo definitivo
+BTSolicitudes,reason,Motivo,Texto,false,sin defecto,,follower / full / other o equivalencia documentada
+BTSolicitudes,submittedAt,Solicitud recibida,Fecha y hora,false,sin defecto,,Instante real del gestor
+BTSolicitudes,priorityAt,Prioridad efectiva,Fecha y hora,false,sin defecto,,Prioridad manual o fecha de solicitud según servicio
+BTSolicitudes,parentRequestRef,Solicitud de origen,Referencia a BTSolicitudes,false,sin defecto,BTSolicitudes,Para división; misma versión
+BTSolicitudes,promotedReservationRef,Reserva aceptada,Referencia a BTReservas,false,sin defecto,BTReservas,Solo cuando existe relación fiable

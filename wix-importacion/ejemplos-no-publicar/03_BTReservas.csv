@@ -1,0 +1,2 @@
+﻿_id,title,key,eventRef,versionRef,sourceId,sourceUpdatedAt,reservationCode,webId,sourceState,packageName,sourceChannel,registeredAt
+cc6b1d6e-412e-55bc-a93d-a5ba5be31754,EJEMPLO - BTReservas,de14b7e2-facc-5082-a48e-ac751cd4a163:BTReservas:example-BTReservas,0efff940-7751-5ad3-a60a-9ee755e29ff3,de14b7e2-facc-5082-a48e-ac751cd4a163,example-BTReservas,Tue Nov 17 2026 13:00:00 GMT+0100 (hora estándar de Europa central),EJEMPLO-001,,accepted,Paquete de ejemplo,manual,Tue Nov 17 2026 08:00:00 GMT+0100 (hora estándar de Europa central)

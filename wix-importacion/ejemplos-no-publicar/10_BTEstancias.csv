@@ -1,0 +1,2 @@
+﻿_id,title,key,eventRef,versionRef,sourceId,sourceUpdatedAt,personRef,roomRef,bookedRoomType,checkInDate,checkOutDate,state,bedLabel
+58a68e23-ae27-53e9-a445-13db6fc53d13,EJEMPLO - BTEstancias,de14b7e2-facc-5082-a48e-ac751cd4a163:BTEstancias:example-BTEstancias,0efff940-7751-5ad3-a60a-9ee755e29ff3,de14b7e2-facc-5082-a48e-ac751cd4a163,example-BTEstancias,Tue Nov 17 2026 13:00:00 GMT+0100 (hora estándar de Europa central),656803e8-86d3-57d1-a273-61bd720ceab9,4d6c13c5-3313-5a95-a5ad-6330384a2482,single,2026-11-17,2026-11-20,reserved,

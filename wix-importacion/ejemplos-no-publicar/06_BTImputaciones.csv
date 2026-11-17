@@ -1,0 +1,2 @@
+﻿_id,title,key,eventRef,versionRef,sourceId,sourceUpdatedAt,paymentRef,personRef,destination,amountCents
+8b473cd9-877b-5daf-a7c5-660f3ad60d92,EJEMPLO - BTImputaciones,de14b7e2-facc-5082-a48e-ac751cd4a163:BTImputaciones:example-BTImputaciones,0efff940-7751-5ad3-a60a-9ee755e29ff3,de14b7e2-facc-5082-a48e-ac751cd4a163,example-BTImputaciones,Tue Nov 17 2026 13:00:00 GMT+0100 (hora estándar de Europa central),8858fba8-79e6-5b06-ac4b-1e0041ac4899,656803e8-86d3-57d1-a273-61bd720ceab9,event,10000

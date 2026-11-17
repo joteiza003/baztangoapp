@@ -1,0 +1,89 @@
+import { createHmac, createHash, randomBytes, timingSafeEqual } from 'crypto';
+
+export const ALLOWED_ORIGIN = 'https://joteiza003.github.io';
+const resources = new Set(['personas', 'solicitudes', 'reservas', 'pagos', 'imputaciones', 'actividades', 'participaciones', 'habitaciones', 'estancias', 'cajas', 'movimientos', 'gastos']);
+const filterFields = new Set(['state', 'paymentState', 'arrivalState', 'danceRole', 'eventDate', 'category', 'activityRef', 'attendanceState', 'roomType', 'roomRef', 'businessDate', 'cashSessionRef', 'personRef', 'reservationRef', 'paymentRef', 'expenseRef', 'needsReview', 'hasDataIssues', 'eligible', 'packageName', 'isTeam', 'isGuest', 'country', 'requestedPackage', 'requestedRole', 'reason', 'paymentDate', 'kind', 'method', 'destination', 'receivedBy']);
+export function fail(status, code) { throw Object.assign(new Error(code), { status, code }); }
+export function normalize(value) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' '); }
+function equal(left, right) {
+  return timingSafeEqual(createHash('sha256').update(left).digest(), createHash('sha256').update(right).digest());
+}
+function identifier(value) {
+  if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(value)) fail(400, 'INVALID_QUERY');
+  return value;
+}
+export function createService({ repository, getPassword, now = Date.now }) {
+  const buckets = new Map();
+  function rate(key, max) {
+    const minute = Math.floor(now() / 60000);
+    for (const [bucketKey, bucket] of buckets) if (bucket.minute !== minute) buckets.delete(bucketKey);
+    const bucket = buckets.get(key) || { minute, count: 0 };
+    if (++bucket.count > max || buckets.size > 2000) fail(429, 'RATE_LIMIT');
+    buckets.set(key, bucket);
+  }
+  return async function handle(request) {
+    const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, private', 'Vary': 'Origin', 'X-Content-Type-Options': 'nosniff' };
+    try {
+      if (request.origin !== ALLOWED_ORIGIN) fail(403, 'ACCESS_DENIED');
+      headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGIN;
+      headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
+      headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type';
+      if (request.method === 'OPTIONS') return { status: 204, headers, body: null };
+      if (request.method !== 'POST') fail(405, 'METHOD_NOT_ALLOWED');
+      rate('global', 180);
+      const raw = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
+      if (!raw || raw.length > 4000) fail(413, 'INVALID_BODY');
+      let body;
+      try { body = JSON.parse(raw); } catch { fail(400, 'INVALID_BODY'); }
+      if (!body || Array.isArray(body) || typeof body !== 'object') fail(400, 'INVALID_BODY');
+      if (body.action === 'login') rate('login', 10);
+      const password = await getPassword();
+      if (typeof password !== 'string' || password.length < 20) fail(503, 'CONFIGURATION_PENDING');
+      const sign = (payload) => createHmac('sha256', password).update(`baztango-session-v1:${payload}`).digest('base64url');
+      if (body.action === 'login') {
+        if (typeof body.password !== 'string' || !equal(body.password, password)) fail(401, 'ACCESS_DENIED');
+        const expiresAt = now() + 900000;
+        const payload = Buffer.from(JSON.stringify({ exp: expiresAt, nonce: randomBytes(24).toString('hex'), aud: ALLOWED_ORIGIN })).toString('base64url');
+        return { status: 200, headers, body: { token: `${payload}.${sign(payload)}`, expiresAt, events: await repository.events() } };
+      }
+      const token = request.authorization?.startsWith('Bearer ') ? request.authorization.slice(7) : '';
+      if (!token || token.length > 1000) fail(401, 'ACCESS_DENIED');
+      const [payload, signature, extra] = token.split('.');
+      if (extra || !payload || !signature || !equal(signature, sign(payload))) fail(401, 'ACCESS_DENIED');
+      let claims;
+      try { claims = JSON.parse(Buffer.from(payload, 'base64url').toString()); } catch { fail(401, 'ACCESS_DENIED'); }
+      if (claims.aud !== ALLOWED_ORIGIN || !Number.isSafeInteger(claims.exp) || claims.exp <= now() || claims.exp > now() + 900000) fail(401, 'ACCESS_DENIED');
+      rate(`session:${signature}`, 60);
+      const eventId = identifier(body.eventId);
+      if (body.action === 'context') return { status: 200, headers, body: await repository.context(eventId) };
+      const versionId = identifier(body.versionId);
+      let result;
+      if (body.action === 'list') {
+        const { resource, search = '', filters = {}, page = 0, limit = 25, order = 'default' } = body;
+        if (!resources.has(resource) || typeof search !== 'string' || search.length > 100 || !Number.isInteger(page) || page < 0 || page > 200 || !Number.isInteger(limit) || limit < 1 || limit > 100 || !filters || Array.isArray(filters) || typeof filters !== 'object') fail(400, 'INVALID_QUERY');
+        for (const [field, value] of Object.entries(filters)) {
+          if (!filterFields.has(field) || (['eligible', 'needsReview', 'hasDataIssues', 'isTeam', 'isGuest'].includes(field) ? typeof value !== 'boolean' : typeof value !== 'string' || value.length > 100)) fail(400, 'INVALID_QUERY');
+        }
+        if (!['default', 'name', 'pendingDesc', 'date'].includes(order)) fail(400, 'INVALID_QUERY');
+        result = await repository.list({ eventId, versionId, resource, search: normalize(search), filters, page, limit, order });
+      } else if (body.action === 'summary') result = await repository.summary(eventId, versionId);
+      else if (body.action === 'detail') result = await repository.detail(eventId, versionId, identifier(body.personId));
+      else if (body.action === 'requestDetail') result = await repository.requestDetail(eventId, versionId, identifier(body.requestId));
+      else if (body.action === 'roomDetail') {
+        const nightDate = new Date(`${body.night}T00:00:00Z`);
+        if (typeof body.night !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.night) || !Number.isFinite(nightDate.getTime()) || nightDate.toISOString().slice(0, 10) !== body.night) fail(400, 'INVALID_QUERY');
+        result = await repository.roomDetail(eventId, versionId, identifier(body.roomId), body.night);
+      } else if (body.action === 'activityDetail') {
+        const { group = 'entitled', search = '', page = 0, limit = 25 } = body;
+        if (!['entitled', 'registered', 'missing'].includes(group) || typeof search !== 'string' || search.length > 100 || !Number.isInteger(page) || page < 0 || page > 200 || !Number.isInteger(limit) || limit < 1 || limit > 100) fail(400, 'INVALID_QUERY');
+        result = await repository.activityDetail(eventId, versionId, identifier(body.activityId), { group, search: normalize(search), page, limit });
+      }
+      else fail(400, 'INVALID_QUERY');
+      return { status: 200, headers, body: result };
+    } catch (error) {
+      const status = Number.isInteger(error.status) ? error.status : 503;
+      if (status === 429) headers['Retry-After'] = '60';
+      return { status, headers, body: { error: error.code && error.status ? error.code : 'SERVICE_UNAVAILABLE' } };
+    }
+  };
+}
