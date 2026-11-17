@@ -20,3 +20,15 @@ test('a temporary quota on the first login shows a countdown and prevents immedi
   await expect(page.getByRole('button', { name: 'Acceder', exact: true })).toBeEnabled();
   expect(attempts).toBe(1);
 });
+test('the entry point is versioned and legacy quota errors cannot show the obsolete message', async ({ page }) => {
+  await installApi(page);
+  await page.route('https://qa.example.invalid/_functions/baztango', (route) => route.fulfill({ status: 503, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:4187', 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'RATE_LIMIT' }) }));
+  await page.goto('/');
+  await expect(page.locator('script[type="module"]')).toHaveAttribute('src', './app.js?v=1.0.2');
+  await expect(page.getByText('Versión 1.0.2', { exact: true })).toBeVisible();
+  await page.getByLabel('Contraseña de acceso').fill(fixturePassword);
+  await page.getByRole('button', { name: 'Acceder', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('pausa temporal');
+  await expect(page.getByRole('alert')).not.toContainText('Se ha alcanzado el límite de consultas');
+  await expect(page.getByRole('button', { name: /Reintentar en/ })).toBeDisabled();
+});
