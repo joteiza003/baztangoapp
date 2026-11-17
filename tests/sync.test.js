@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHmac, randomUUID, createHash } from 'node:crypto';
 import { createSyncService, canonicalJSON, hashRows } from '../wix/sync-service.js';
 import { createSyncRepository, SYNC_COLLECTIONS } from '../wix/sync-repository.js';
+import { encodeRows } from '../wix/snapshot-codec.js';
 
 const instant = Date.parse('2026-11-17T12:00:00.000Z');
 const adminSecret = 'synthetic-admin-export-secret';
@@ -46,6 +47,7 @@ function fakeDB() {
       for (const row of rows) { if (tables[table][row._id]) updated++; else inserted++; tables[table][row._id] = copy(row); }
       return { inserted, updated, errors: [], skipped: 0 };
     },
+    async bulkRemove(table, ids, options) { calls.push({ op: 'bulkRemove', table, options }); for (const id of ids) delete tables[table]?.[id]; return { removed: ids.length, errors: [], skipped: 0 }; },
     async remove(table, id, options) { calls.push({ op: 'remove', table, options }); const row = tables[table]?.[id]; delete tables[table]?.[id]; return copy(row); }
   }; return db;
 }
@@ -216,7 +218,7 @@ test('never offsets one person debt with another person overpayment', async () =
 test('bulkSave partial errors and internal failures never expose payloads', async () => {
   const f = fixture(); await f.send(f.begin()); f.db.bulkFailure = true;
   const result = await f.send(f.chunk('BTPersonas'));
-  assert.equal(result.status, 503); assert.deepEqual(result.body, { ok: false, error: 'WRITE_INCOMPLETE' });
+  assert.equal(result.status, 422); assert.deepEqual(result.body, { ok: false, error: 'WRITE_INCOMPLETE' });
   f.db.beforeFind = () => { throw new Error('private-person@example.invalid'); };
   const failed = await f.commit();
   assert.equal(failed.status, 503); assert.deepEqual(failed.body, { ok: false, error: 'SYNC_UNAVAILABLE' });
@@ -332,4 +334,45 @@ test('allows a shared payment across reservations while keeping every reference 
   const p = f.row('BTPagos', { paymentCode: 'pay', amountCents: 1000, reservationRef: reservation._id, payerRef: f.person._id }); f.rows.BTPagos.push(p);
   f.rows.BTImputaciones.push(f.row('BTImputaciones', { paymentRef: p._id, personRef: f.person._id, amountCents: 1000 }));
   await f.load(); assert.equal((await f.commit()).status, 200);
+});
+
+test('compact snapshots preserve all logical rows with one physical item per collection', async () => {
+  const f = fixture();
+  assert.equal((await f.send({ ...f.begin(), storage: 'gzip-v1' })).status, 200);
+  for (const collection of SYNC_COLLECTIONS) {
+    const response = await f.send({ action: 'collection', eventId: f.eventId, versionId: f.versionId, collection, data: encodeRows(f.rows[collection]) });
+    assert.equal(response.status, 200, response.body.error);
+  }
+  assert.equal((await f.commit()).status, 200);
+  assert.equal(Object.keys(f.db.tables.BTPersonas).length, 1);
+  assert.equal(Object.values(f.db.tables.BTPersonas)[0].storageKind, 'gzip-v1');
+  assert.equal(f.db.tables.BTVersiones[f.versionId].recordCount, 2);
+  assert.equal((await f.send({ ...f.begin(), storage: 'gzip-v1' })).body.unchanged, true);
+});
+
+test('compact data with wrong hash, foreign scope or invalid compression is never published', async () => {
+  const f = fixture(); await f.send({ ...f.begin(), storage: 'gzip-v1' });
+  const packet = { action: 'collection', eventId: f.eventId, versionId: f.versionId, collection: 'BTPersonas' };
+  for (const data of ['invalid', encodeRows([{ ...f.person, fullName: 'changed' }]), encodeRows([{ ...f.person, versionRef: randomUUID() }])]) {
+    assert.notEqual((await f.send({ ...packet, data })).status, 200);
+  }
+  assert.notEqual((await f.commit()).status, 200);
+  assert.equal(f.db.tables.BTEventos[f.eventId].currentVersionRef, undefined);
+});
+
+test('cleanup only discards old failed copies created by this integration', async () => {
+  const f = fixture(); f.db.clock = instant - 700000;
+  const packet = f.begin(); packet.version.sourceLabel = 'Baztango Manager Pro';
+  assert.equal((await f.send(packet)).status, 200);
+  assert.equal((await f.send(f.chunk('BTReservas'))).status, 200);
+  f.db.clock = instant;
+  const unrelated = randomUUID(); const ready = randomUUID();
+  f.db.tables.BTVersiones[unrelated] = { _id: unrelated, eventRef: f.eventId, state: 'loading', sourceLabel: 'Other loader' };
+  f.db.tables.BTVersiones[ready] = { _id: ready, eventRef: f.eventId, state: 'ready', sourceLabel: 'Baztango Manager Pro' };
+  f.db.tables.BTEventos[f.eventId].currentVersionRef = ready;
+  const result = await f.send({ action: 'cleanupFailed', eventId: f.eventId });
+  assert.equal(result.status, 200); assert.equal(result.body.removedVersions, 1);
+  assert.equal(f.db.tables.BTVersiones[f.versionId], undefined);
+  assert.ok(f.db.tables.BTVersiones[unrelated]); assert.ok(f.db.tables.BTVersiones[ready]);
+  assert.equal(f.db.tables.BTEventos[f.eventId].currentVersionRef, ready);
 });

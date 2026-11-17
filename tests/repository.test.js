@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { createRepository } from '../wix/repository.js';
 import { project, schema } from '../wix/schema.js';
 import { readFile } from 'node:fs/promises';
+import { encodeRows, hashRows, packedId } from '../wix/snapshot-codec.js';
+
+function packed(collection, rows) {
+  return { _id: packedId(collection, 'v1'), ...scope, storageKind: 'gzip-v1', payloadGzip: encodeRows(rows), payloadHash: hashRows(rows), rowCount: rows.length };
+}
 
 const scope = { eventRef: 'e1', versionRef: 'v1' };
 function database(extra = {}) {
@@ -115,4 +120,17 @@ test('backend collection mapping supports Wix assigned import IDs without changi
   const result = await repository.list({ resource: 'personas', eventId: 'e1', versionId: 'v1', search: '', filters: {}, page: 0, limit: 25 });
   assert.equal(result.items[0]._id, 'p1');
   assert.ok(data.calls.some((call) => call.table === 'Import4'));
+});
+
+test('compact storage preserves list filters, details and summary without exposing envelopes', async () => {
+  const people = [{ _id: 'p1', ...scope, reservationRef: 'r1', state: 'accepted', firstName: 'Synthetic', searchText: 'synthetic', pendingCents: 500, email: 'synthetic@example.invalid' }, { _id: 'p2', ...scope, reservationRef: 'r1', state: 'cancelled', pendingCents: 100 }];
+  const data = database({ BTPersonas: [packed('BTPersonas', people)], BTReservas: [packed('BTReservas', [{ _id: 'r1', ...scope }])] });
+  const repo = createRepository(data);
+  const result = await repo.list({ resource: 'personas', eventId: 'e1', versionId: 'v1', search: 'synthetic', filters: { state: 'accepted' }, page: 0, limit: 25 });
+  assert.equal(result.total, 1); assert.equal(result.items[0]._id, 'p1');
+  assert.equal(result.items[0].email, undefined); assert.equal(result.items[0].payloadGzip, undefined);
+  assert.equal((await repo.detail('e1', 'v1', 'p1')).person.email, 'synthetic@example.invalid');
+  assert.equal((await repo.summary('e1', 'v1')).pendingCents, 600);
+  data.tables.BTPersonas[0].payloadHash = '0'.repeat(64);
+  await assert.rejects(repo.summary('e1', 'v1'), { code: 'INVALID_REFERENCE' });
 });

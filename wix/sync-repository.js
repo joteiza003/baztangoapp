@@ -1,5 +1,7 @@
 import { schema, detailFields } from './schema.js';
 import { createHash, randomUUID } from 'crypto';
+import { Buffer } from 'buffer';
+import { packedId, encodeRows, unpackRow } from './snapshot-codec.js';
 
 export const SYNC_COLLECTIONS = Object.freeze(Object.values(schema).map(([name]) => name));
 export const SYNC_MAX_ROWS = 20000;
@@ -151,11 +153,19 @@ export function createSyncRepository(wixData, collectionIds = {}, { now = Date.n
     onStep('chunk-write', collection, items.length);
     const result = await wixData.bulkSave(collectionId(collection), normalized, writeOptions);
     onStep('chunk-written', collection, items.length);
-    if (!result || result.errors?.length || result.skipped || result.inserted + result.updated !== normalized.length) syncFail(503, 'WRITE_INCOMPLETE');
+    if (!result || result.errors?.length || result.skipped || result.inserted + result.updated !== normalized.length) {
+      onStep('chunk-result', collection, JSON.stringify({ inserted: result?.inserted, updated: result?.updated, skipped: result?.skipped, errors: result?.errors?.length, codes: (result?.errors || []).map((error) => /^WDE\d{4}$/.test(error.code || '') ? error.code : 'DATA_ERROR') }));
+      syncFail(422, 'WRITE_INCOMPLETE');
+    }
     return normalized.length;
   }
   async function readRows(collection, eventId, versionId) {
     if (!SYNC_COLLECTIONS.includes(collection)) syncFail(400, 'INVALID_COLLECTION');
+    const packed = await get(collection, packedId(collection, versionId));
+    if (packed) {
+      try { return unpackRow(packed, collection, eventId, versionId); }
+      catch { syncFail(409, 'INVALID_COMPACT_DATA'); }
+    }
     const rows = []; let total;
     do {
       const result = await query(collection).eq('eventRef', eventId).eq('versionRef', versionId).ascending('_id').skip(rows.length).limit(1000).find(readOptions);
@@ -167,6 +177,55 @@ export function createSyncRepository(wixData, collectionIds = {}, { now = Date.n
       if (rows.length > total || rows.length > SYNC_MAX_ROWS) syncFail(409, 'READ_INCOMPLETE');
     } while (rows.length < total);
     return rows;
+  }
+  async function savePacked(collection, eventId, versionId, rows, payloadHash, lease) {
+    if (!SYNC_COLLECTIONS.includes(collection)) syncFail(400, 'INVALID_COLLECTION');
+    const version = await get('BTVersiones', versionId);
+    if (!version || version.state !== 'loading' || version.eventRef !== eventId) syncFail(409, 'VERSION_IMMUTABLE');
+    const id = packedId(collection, versionId);
+    const existing = await get(collection, id);
+    if (existing && (existing.eventRef !== eventId || existing.versionRef !== versionId || existing.storageKind !== 'gzip-v1')) syncFail(409, 'SCOPE_MISMATCH');
+    const row = { _id: id, title: `Snapshot ${collection}`, key: `${versionId}:${collection}:compact-v1`, sourceId: '__compact_v1__', eventRef: eventId, versionRef: versionId, storageKind: 'gzip-v1', payloadGzip: encodeRows(rows), payloadHash, rowCount: rows.length };
+    if (Buffer.byteLength(JSON.stringify(row), 'utf8') > 480000) syncFail(422, 'COMPACT_COLLECTION_TOO_LARGE');
+    await guard(lease);
+    try {
+      if (existing) await wixData.update(collectionId(collection), row, writeOptions);
+      else await wixData.insert(collectionId(collection), row, writeOptions);
+    } catch (error) {
+      if (error?.code === 'WDE0195') syncFail(422, 'CMS_STORAGE_FULL');
+      throw error;
+    }
+  }
+  async function cleanupFailed(eventId, lease) {
+    const result = await query('BTVersiones').eq('eventRef', eventId).eq('state', 'loading').limit(100).find(readOptions);
+    const candidates = result.items.filter((version) => {
+      if (!String(version.sourceLabel || '').startsWith('Baztango Manager Pro') || !String(version.validationSummary || '').startsWith(SYNC_PREFIX) || now() - new Date(version._createdDate).getTime() < SYNC_RECOVERY_MS || !Number.isFinite(new Date(version._createdDate).getTime())) return false;
+      try { const summary = JSON.parse(version.validationSummary.slice(SYNC_PREFIX.length)); return summary.protocol === 1 && summary.phase === 'loading' && summary.manifest && Object.keys(summary.manifest).length === 12; } catch { return false; }
+    });
+    let removedItems = 0; let removedVersions = 0;
+    async function guardFailed(versionId) {
+      await guard(lease);
+      const [event, version] = await Promise.all([get('BTEventos', eventId), get('BTVersiones', versionId)]);
+      if (!event || event.currentVersionRef === versionId || !version || version.state !== 'loading' || version.eventRef !== eventId) syncFail(409, 'VERSION_IMMUTABLE');
+    }
+    for (const version of candidates.slice(0, 3)) {
+      for (const collection of SYNC_COLLECTIONS) {
+        while (true) {
+          const rows = await query(collection).eq('eventRef', eventId).eq('versionRef', version._id).limit(1000).find(readOptions);
+          if (!rows.items.length) break;
+          if (rows.items.some((row) => row.eventRef !== eventId || row.versionRef !== version._id || !String(row.key || '').startsWith(`${version._id}:`))) syncFail(409, 'SCOPE_MISMATCH');
+          await guardFailed(version._id);
+          const removed = await wixData.bulkRemove(collectionId(collection), rows.items.map((row) => row._id), writeOptions);
+          if (removed.errors?.length || removed.skipped || removed.removed !== rows.items.length) syncFail(422, 'CLEANUP_INCOMPLETE');
+          removedItems += removed.removed;
+          if (removedItems > SYNC_MAX_ROWS) syncFail(422, 'ROW_LIMIT');
+        }
+      }
+      await guardFailed(version._id);
+      await wixData.remove(collectionId('BTVersiones'), version._id, writeOptions);
+      removedVersions++;
+    }
+    return { ok: true, removedVersions, removedItems, hasMore: candidates.length > 3 };
   }
   async function activate(eventId, versionId, baseVersionRef, lease) {
     const event = await get('BTEventos', eventId);
@@ -180,5 +239,5 @@ export function createSyncRepository(wixData, collectionIds = {}, { now = Date.n
     const activated = await get('BTEventos', eventId);
     if (activated?.currentVersionRef !== versionId) syncFail(409, 'VERSION_CONFLICT');
   }
-  return { get, byKey, withLock, insert, saveVersion, bulkSave, readRows, activate };
+  return { get, byKey, withLock, insert, saveVersion, bulkSave, savePacked, cleanupFailed, readRows, activate };
 }

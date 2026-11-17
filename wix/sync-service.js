@@ -1,25 +1,13 @@
-import { createHash, createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
+import { canonicalJSON, hashRows, hashValue as hash, decodeRows } from './snapshot-codec.js';
+export { canonicalJSON, hashRows } from './snapshot-codec.js';
 import { Buffer } from 'buffer';
 import { SYNC_COLLECTIONS, SYNC_MAX_ROWS, SYNC_PREFIX, SYNC_REFERENCES, SyncError, syncFail, syncId, syncDate, normalizeSyncRow } from './sync-repository.js';
 
 export const SYNC_MAX_BYTES = 400000;
-const omitted = new Set(['_createdDate', '_updatedDate', '_owner']);
 const hashPattern = /^[a-f0-9]{64}$/;
 const responseHeaders = Object.freeze({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
-export function canonicalJSON(value) {
-  function canonical(item, key = '') {
-    if (item instanceof Date || (key.endsWith('At') && typeof item === 'string')) return JSON.stringify(syncDate(item).toISOString());
-    if (Array.isArray(item)) return `[${item.map((entry) => canonical(entry) ?? 'null').join(',')}]`;
-    if (item && typeof item === 'object') return `{${Object.keys(item).sort(compare).filter((field) => !omitted.has(field) && item[field] !== null && item[field] !== undefined).map((field) => `${JSON.stringify(field)}:${canonical(item[field], field)}`).join(',')}}`;
-    if (typeof item === 'number' && !Number.isFinite(item)) syncFail(400, 'INVALID_NUMBER');
-    return JSON.stringify(item);
-  }
-  return canonical(value);
-}
-function hash(value) { return createHash('sha256').update(canonicalJSON(value), 'utf8').digest('hex'); }
-export function hashRows(rows) { return hash([...rows].sort((a, b) => compare(a._id, b._id))); }
 function object(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) syncFail(400, 'INVALID_BODY');
   return value;
@@ -135,7 +123,9 @@ export function createSyncService({ repository, getAdminSecret, now = Date.now }
     if ((event.currentVersionRef || null) !== summary.baseVersionRef && event.currentVersionRef !== versionId) syncFail(409, 'VERSION_CONFLICT');
   }
   async function begin(packet, lease) {
-    onlyKeys(packet, ['action', 'event', 'version', 'manifest']);
+    onlyKeys(packet, ['action', 'event', 'version', 'manifest', 'storage']);
+    const storage = packet.storage || 'rows-v1';
+    if (!['rows-v1', 'gzip-v1'].includes(storage)) syncFail(400, 'INVALID_STORAGE');
     const event = normalizeSyncRow('BTEventos', packet.event);
     const version = normalizeSyncRow('BTVersiones', packet.version);
     const { manifest, total } = manifestOf(packet.manifest);
@@ -154,7 +144,7 @@ export function createSyncService({ repository, getAdminSecret, now = Date.now }
     if (sameVersionKey && sameVersionKey._id !== version._id) syncFail(409, 'IDENTITY_CONFLICT');
     if (existing) {
       const summary = summaryOf(existing);
-      if (existing.eventRef !== event._id || versionIdentity(existing) !== versionIdentity(version) || canonicalJSON(summary.manifest) !== canonicalJSON(manifest)) syncFail(409, 'VERSION_CONFLICT');
+      if (existing.eventRef !== event._id || versionIdentity(existing) !== versionIdentity(version) || canonicalJSON(summary.manifest) !== canonicalJSON(manifest) || (summary.storage || 'rows-v1') !== storage) syncFail(409, 'VERSION_CONFLICT');
       if (!previousEvent) syncFail(409, 'SCOPE_MISMATCH');
       checkBase(previousEvent, version._id, summary);
       if (existing.state !== 'loading' && existing.state !== 'ready') syncFail(409, 'VERSION_IMMUTABLE');
@@ -165,7 +155,7 @@ export function createSyncService({ repository, getAdminSecret, now = Date.now }
       await repository.insert('BTEventos', event, lease);
     }
     const baseVersionRef = previousEvent?.currentVersionRef || null;
-    version.validationSummary = technical({ protocol: 1, phase: 'loading', baseVersionRef, manifest });
+    version.validationSummary = technical({ protocol: 1, phase: 'loading', storage, baseVersionRef, manifest });
     await repository.insert('BTVersiones', version, lease);
     return { ok: true, versionId: version._id, eventId: event._id, unchanged: false };
   }
@@ -175,9 +165,26 @@ export function createSyncService({ repository, getAdminSecret, now = Date.now }
     const { event, version, summary } = await context(packet.eventId, packet.versionId);
     checkBase(event, version._id, summary);
     if (version.state !== 'loading' || summary.phase !== 'loading') syncFail(409, 'VERSION_IMMUTABLE');
+    if (summary.storage === 'gzip-v1') syncFail(400, 'INVALID_STORAGE');
     if (packet.items.length > summary.manifest[packet.collection].count) syncFail(400, 'INVALID_CHUNK');
     const written = await repository.bulkSave(packet.collection, packet.eventId, packet.versionId, packet.items, lease);
     return { ok: true, written };
+  }
+  async function collection(packet, lease) {
+    onlyKeys(packet, ['action', 'eventId', 'versionId', 'collection', 'data']);
+    if (!SYNC_COLLECTIONS.includes(packet.collection)) syncFail(400, 'INVALID_COLLECTION');
+    const { event, version, summary } = await context(packet.eventId, packet.versionId);
+    checkBase(event, version._id, summary);
+    if (version.state !== 'loading' || summary.phase !== 'loading') syncFail(409, 'VERSION_IMMUTABLE');
+    if (summary.storage !== 'gzip-v1') syncFail(400, 'INVALID_STORAGE');
+    let rows;
+    try { rows = decodeRows(packet.data); } catch { syncFail(400, 'INVALID_COMPACT_DATA'); }
+    rows = rows.map((row) => normalizeSyncRow(packet.collection, row));
+    if (rows.some((row) => row.eventRef !== event._id || row.versionRef !== version._id)) syncFail(409, 'SCOPE_MISMATCH');
+    const expected = summary.manifest[packet.collection];
+    if (rows.length !== expected.count || hashRows(rows) !== expected.hash) syncFail(409, 'MANIFEST_MISMATCH');
+    await repository.savePacked(packet.collection, event._id, version._id, rows, expected.hash, lease);
+    return { ok: true, written: rows.length };
   }
   async function commit(packet, lease) {
     onlyKeys(packet, ['action', 'eventId', 'versionId']);
@@ -228,10 +235,15 @@ export function createSyncService({ repository, getAdminSecret, now = Date.now }
       let packet;
       try { packet = JSON.parse(body); } catch { syncFail(400, 'INVALID_JSON'); }
       object(packet);
-      if (!['begin', 'chunk', 'commit'].includes(packet.action)) syncFail(400, 'INVALID_ACTION');
+      if (!['begin', 'chunk', 'collection', 'commit', 'cleanupFailed'].includes(packet.action)) syncFail(400, 'INVALID_ACTION');
       const eventId = syncId(packet.action === 'begin' ? packet.event?._id : packet.eventId);
-      syncId(packet.action === 'begin' ? packet.version?._id : packet.versionId);
-      const result = await repository.withLock(eventId, (lease) => packet.action === 'begin' ? begin(packet, lease) : packet.action === 'chunk' ? chunk(packet, lease) : commit(packet, lease));
+      if (packet.action !== 'cleanupFailed') syncId(packet.action === 'begin' ? packet.version?._id : packet.versionId);
+      if (packet.action === 'cleanupFailed') {
+        onlyKeys(packet, ['action', 'eventId']);
+        const result = await repository.withLock(eventId, (lease) => repository.cleanupFailed(eventId, lease));
+        return { status: 200, headers: { ...responseHeaders }, body: result };
+      }
+      const result = await repository.withLock(eventId, (lease) => packet.action === 'begin' ? begin(packet, lease) : packet.action === 'chunk' ? chunk(packet, lease) : packet.action === 'collection' ? collection(packet, lease) : commit(packet, lease));
       return { status: 200, headers: { ...responseHeaders }, body: result };
     } catch (error) {
       const retry = error instanceof SyncError && ['SYNC_BUSY', 'LEASE_EXPIRED'].includes(error.code) ? { 'Retry-After': '30' } : {};

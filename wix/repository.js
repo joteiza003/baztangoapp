@@ -1,5 +1,6 @@
 import { schema, project } from './schema.js';
 import { fail, normalize } from './service.js';
+import { createSnapshotQuery } from './snapshot-query.js';
 
 const options = { suppressAuth: true, consistentRead: true };
 const refId = (value) => typeof value === 'object' && value ? value._id : value;
@@ -9,9 +10,10 @@ const references = { reservationRef: 'reservas', personRef: 'personas', paymentR
 
 export function createRepository(data, collectionIds = {}) {
   const collectionId = (name) => collectionIds[name] || name;
-  const base = (resource, eventId, versionId) => data.query(collectionId(schema[resource][0])).eq('eventRef', eventId).eq('versionRef', versionId);
+  const base = (resource, eventId, versionId) => createSnapshotQuery(data, schema[resource][0], collectionId(schema[resource][0]), eventId, versionId);
   async function getScoped(resource, id, eventId, versionId) {
-    const row = await data.get(collectionId(schema[resource][0]), id, options);
+    const result = await base(resource, eventId, versionId).eq('_id', id).limit(1).find(options);
+    const row = result.items[0];
     if (!row || refId(row.eventRef) !== eventId || refId(row.versionRef) !== versionId) fail(409, 'INVALID_REFERENCE');
     return row;
   }
