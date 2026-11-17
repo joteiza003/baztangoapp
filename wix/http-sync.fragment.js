@@ -12,7 +12,7 @@ const baztangoSyncService = createSyncService({
     BTPagos: 'Import5', BTImputaciones: 'Import6', BTActividades: 'Import7', BTParticipaciones: 'Import8',
     BTHabitaciones: 'Import9', BTEstancias: 'Import10', BTCajas: 'Import11', BTMovimientos: 'Import12',
     BTGastos: 'Import13', BTSolicitudes: 'Import14'
-  }),
+  }, { onStep: (step, collection, count) => console.info('BAZTANGO_SYNC', step, collection, count) }),
   getAdminSecret: async () => {
     const secret = await baztangoSyncGetSecret('baztango-reservations-export-token');
     return typeof secret === 'string' ? secret : secret.value;

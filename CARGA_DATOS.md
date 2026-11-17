@@ -1,6 +1,10 @@
-# Punto de entrada para una futura copia del gestor
+# Copia automática desde el gestor
 
-La aplicación web no escribe en Wix. El futuro cargador administrativo es un proyecto separado: usa credenciales privadas de carga, nunca el secret compartido del panel ni un endpoint de escritura añadido a este servicio.
+La aplicación web mantiene acceso de solo consulta. El gestor publica al iniciar la edición mediante el receptor administrativo separado `POST /_functions/baztangoSync`. Usa HMAC-SHA256 con el secret existente `baztango-reservations-export-token`, nunca la contraseña compartida del panel. Los módulos son `wix/sync-service.js`, `wix/sync-repository.js` y `wix/http-sync.fragment.js`; deben instalarse junto a los módulos de consulta y conservar el resto de funciones HTTP del sitio.
+
+El protocolo firmado usa el timestamp Unix en milisegundos y el cuerpo original: `HMAC(secret, timestamp + "\n" + rawBody)`, en `X-Baztango-Timestamp` y `X-Baztango-Signature`. Admite cinco minutos de desviación y rechaza `Origin`. `begin` recibe evento, versión y manifiesto de doce colecciones `{count, hash}`; `chunk` recibe evento, versión, colección y hasta cien filas; `commit` valida todo antes de activar. Máximo 400.000 bytes por petición y 20.000 filas por copia. Los hashes omiten campos de sistema y valores nulos, ordenan claves y filas por `_id`, y normalizan instantes UTC con milisegundos.
+
+La carga conserva estas reglas:
 
 1. Extraer una copia consistente de solo lectura del gestor y calcular las proyecciones mediante sus servicios vigentes. No deducir saldos o anticipos de columnas históricas aisladas.
 2. Crear una fila `BTVersiones` con `state=loading`, `schemaVersion=1`, `eventRef` y fecha real `capturedAt`. Usar IDs nuevos y claves únicas. Mantener intacta la versión visible mientras se carga.
@@ -11,4 +15,4 @@ La aplicación web no escribe en Wix. El futuro cargador administrativo es un pr
 7. Validar los recuentos físicos `personCount`, `paymentCount`, `recordCount` y la huella `contentHash` con el conjunto cargado. La publicación es una operación administrativa: establecer `publishedAt`, pasar a `ready` solo tras validar y actualizar al final `BTEventos.currentVersionRef`. Releer el resultado.
 8. Una versión publicada es inmutable. Toda corrección genera otra versión. Conservar anteriores según una política de retención; el lector actual exige repetir consulta cuando cambia el puntero. No activar ejemplos o un conjunto incompleto/vacío como si fuera copia real.
 
-La importación de los CSV de cabeceras y la publicación de GitHub Pages no ejecutan ninguno de estos pasos. No hay frecuencia de actualización automática comprometida.
+La importación de los CSV de cabeceras y la publicación de GitHub Pages no cargan datos. La frecuencia implementada es una publicación en segundo plano por inicio de edición del gestor, después de consultar las reservas web. Si el hash no cambió no se vuelven a enviar las filas. Las generaciones anteriores se conservan; no hay borrado automático ni política de retención destructiva.

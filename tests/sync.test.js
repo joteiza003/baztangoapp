@@ -241,7 +241,7 @@ test('two backend instances cannot publish or write concurrently', async () => {
   let entered; const started = new Promise((resolve) => { entered = resolve; });
   f.db.beforeFind = async (table) => { if (table === 'BTReservas') { entered(); await gate; } };
   const committing = f.commit(); await started;
-  const other = createSyncService({ repository: createSyncRepository(f.db), getAdminSecret: async () => adminSecret, now: () => instant });
+  const other = createSyncService({ repository: createSyncRepository(f.db, {}, { now: () => f.db.clock }), getAdminSecret: async () => adminSecret, now: () => instant });
   const packet = f.chunk('BTPersonas'); const body = JSON.stringify(packet); const timestamp = String(instant);
   const result = await other({ method: 'POST', body, headers: { 'X-Baztango-Timestamp': timestamp, 'X-Baztango-Signature': createHmac('sha256', adminSecret).update(`${timestamp}\n${body}`).digest('hex') } });
   assert.equal(result.status, 409); assert.equal(result.body.error, 'SYNC_BUSY');

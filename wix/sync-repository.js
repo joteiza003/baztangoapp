@@ -67,7 +67,7 @@ export function normalizeSyncRow(collection, row, { stored = false } = {}) {
   return result;
 }
 
-export function createSyncRepository(wixData, collectionIds = {}, { now = Date.now } = {}) {
+export function createSyncRepository(wixData, collectionIds = {}, { now = Date.now, onStep = () => {} } = {}) {
   const allowed = new Set(['BTEventos', 'BTVersiones', ...SYNC_COLLECTIONS]);
   const collectionId = (name) => { if (!allowed.has(name)) syncFail(400, 'INVALID_COLLECTION'); return collectionIds[name] || name; };
   const query = (name) => wixData.query(collectionId(name));
@@ -136,16 +136,21 @@ export function createSyncRepository(wixData, collectionIds = {}, { now = Date.n
   async function bulkSave(collection, eventId, versionId, items, lease) {
     if (!SYNC_COLLECTIONS.includes(collection)) syncFail(400, 'INVALID_COLLECTION');
     if (!Array.isArray(items) || !items.length || items.length > 100) syncFail(400, 'INVALID_CHUNK');
+    onStep('chunk-version', collection, items.length);
     const version = await get('BTVersiones', versionId);
     if (!version || version.state !== 'loading' || version.eventRef !== eventId) syncFail(409, 'VERSION_IMMUTABLE');
     const normalized = items.map((row) => normalizeSyncRow(collection, row));
     const ids = normalized.map((row) => row._id);
     if (new Set(ids).size !== ids.length) syncFail(400, 'DUPLICATE_ID');
     if (normalized.some((row) => row.eventRef !== eventId || row.versionRef !== versionId)) syncFail(409, 'SCOPE_MISMATCH');
+    onStep('chunk-existing', collection, items.length);
     const existing = await query(collection).hasSome('_id', ids).limit(100).find(readOptions);
     if (existing.items.some((row) => row.eventRef !== eventId || row.versionRef !== versionId)) syncFail(409, 'SCOPE_MISMATCH');
+    onStep('chunk-lease', collection, items.length);
     await guard(lease);
+    onStep('chunk-write', collection, items.length);
     const result = await wixData.bulkSave(collectionId(collection), normalized, writeOptions);
+    onStep('chunk-written', collection, items.length);
     if (!result || result.errors?.length || result.skipped || result.inserted + result.updated !== normalized.length) syncFail(503, 'WRITE_INCOMPLETE');
     return normalized.length;
   }
