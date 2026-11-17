@@ -2,7 +2,7 @@
 
 Interfaz de solo lectura: https://joteiza003.github.io/baztangoapp/
 
-La interfaz se publica en GitHub Pages desde `main:/docs`. El backend se instala manualmente en Wix. La configuración pública inicial deja `apiUrl` vacío: muestra **Conexión pendiente**, sin clientes, cifras inventadas ni peticiones de datos. Publicar esta interfaz no conecta ni sincroniza el gestor.
+La interfaz se publica en GitHub Pages desde `main:/docs`. El backend se instala manualmente en Wix. La configuración actual apunta a `https://www.joseba-bakartxo.com/_functions/baztango` y muestra el acceso mediante contraseña. Se ha comprobado la conectividad y el rechazo de consultas sin sesión y de otros orígenes, sin introducir credenciales ni leer datos privados. Si `apiUrl` se deja vacío, muestra **Conexión pendiente**. La carga real y la sincronización del gestor no se presuponen por conectar el endpoint.
 
 ## Puesta en marcha en Wix
 
@@ -16,7 +16,7 @@ La interfaz se publica en GitHub Pages desde `main:/docs`. El backend se instala
 8. Accede desde la web publicada y verifica: contraseña incorrecta → acceso denegado; correcta con colecciones vacías → sin ediciones/datos publicados. Comprueba también que una consulta directa sin `Authorization` devuelve 401 y que un origen diferente devuelve 403. No pegues contraseñas/tokens en comandos guardados, capturas o incidencias públicas.
 9. La primera copia real deberá cargarla un proceso administrativo independiente con el contrato de `CARGA_DATOS.md`. Hasta entonces no hay datos reales conectados. La implementación entregada no contiene exportador ni sincronizador del gestor.
 
-La creación de las colecciones y del secret, la instalación/publicación de los archivos en Wix y la primera copia real son pasos manuales pendientes. Las pruebas locales usan exclusivamente datos ficticios; no prueban tu cuenta Wix.
+El usuario ha comunicado que ha completado la preparación en Wix, incluido el secret y los archivos backend. Las comprobaciones anónimas confirman que el endpoint está publicado y protege el acceso. El login autorizado, los permisos de las colecciones y la primera copia real todavía requieren comprobación por el operador. Las pruebas locales usan exclusivamente datos ficticios.
 
 ## Arquitectura y acceso
 
@@ -42,7 +42,7 @@ Los saldos individuales, netos, imputaciones y sesiones proceden de proyecciones
 
 Node.js 22 o posterior. `npm ci`, `npm test`, `npm run serve`. Frontend sin dependencias de producción. Playwright es dependencia de desarrollo para pruebas emuladas: `npx playwright install chromium`, `npx playwright test`. No hay servicio real de Wix durante estas pruebas. Los fixtures del navegador son interceptaciones exclusivas de QA y no forman parte del frontend publicado.
 
-Consulta `VERIFICACION.md` para resultados y límites de cobertura. `node scripts/check-live.js` comprueba la publicación inicial en estado Conexión pendiente y compara los seis recursos públicos con el checkout; debe adaptarse después de conectar Wix, pues ese estado dejará de ser el esperado.
+Consulta `VERIFICACION.md` para resultados y límites de cobertura. `node scripts/check-live.js` compara los seis recursos públicos con el checkout y comprueba la pantalla de acceso o Conexión pendiente según la configuración. `node scripts/check-backend.js` comprueba el preflight y las denegaciones sin sesión y desde otro origen, sin credenciales ni datos privados.
 
 Pages se configura en Settings → Pages → Deploy from a branch → `main` → `/docs`. No se requiere secret de GitHub ni workflow personalizado. Solo se sirve `docs/`; el código backend y el paquete sintético permanecen descargables desde el repositorio público.
 

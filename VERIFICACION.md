@@ -13,7 +13,9 @@
 
 ## Límites de estas pruebas
 
-No se han instalado los archivos en una cuenta Wix real ni consultado datos reales. Siguen pendientes la creación de colecciones/secret, permisos en el sitio, publicación del backend, configuración de su URL y una copia validada del gestor. Esas comprobaciones requieren la configuración manual descrita en README.
+En la verificación inicial no se habían instalado los archivos en una cuenta Wix real ni consultado datos reales. Quedaban pendientes la creación de colecciones/secret, permisos en el sitio, publicación del backend, configuración de su URL y una copia validada del gestor. La actualización siguiente recoge las comprobaciones posteriores.
+
+Actualización posterior del 17/11/2026: el usuario comunica que ha preparado Wix en `www.joseba-bakartxo.com`. Se ha comprobado el endpoint de producción `https://www.joseba-bakartxo.com/_functions/baztango`: OPTIONS desde GitHub Pages devuelve 204 y CORS correcto; consulta sin sesión devuelve 401 ACCESS_DENIED; otro origen devuelve 403 sin cabecera CORS permitida. Las respuestas llevan no-store. Se configura la URL pública en el frontend. Estas comprobaciones no incluyen login con contraseña, lectura de colecciones ni validación de una copia real.
 
 No se han probado dispositivos físicos, Safari de iPhone/iPad, Chrome de Android, Firefox ni Safari de escritorio. El zoom de navegador real y las tecnologías de asistencia requieren validación manual adicional; se ha probado ampliación de texto y redistribución emulada. No se declara sincronización automática.
 

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('unconfigured publication is safe and responsive across representative widths', async ({ page }) => {
+  await page.route('**/config.js', (route) => route.fulfill({ contentType: 'text/javascript', body: "export const config = { apiUrl: '' };" }));
   const errors = [];
   const remoteRequests = [];
   page.on('pageerror', (error) => errors.push(error.message));

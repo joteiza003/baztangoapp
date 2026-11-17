@@ -1,6 +1,7 @@
 import { chromium } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { config } from '../docs/config.js';
 
 const base = 'https://joteiza003.github.io/baztangoapp/';
 for (const file of ['index.html', 'app.js', 'catalogue.js', 'config.js', 'styles.css', 'favicon.svg']) {
@@ -16,7 +17,12 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   const response = await page.goto(base);
   assert.equal(response.status(), 200);
-  await page.getByText('Conexión pendiente', { exact: true }).waitFor();
+  if (config.apiUrl) {
+    await page.getByLabel('Contraseña de acceso').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Acceder', exact: true }).count(), 1);
+  } else {
+    await page.getByText('Conexión pendiente', { exact: true }).waitFor();
+  }
   assert.deepEqual(errors, []);
   await page.screenshot({ path: 'test-results/publicada-escritorio.png', fullPage: true });
   await page.setViewportSize({ width: 320, height: 568 });
@@ -25,7 +31,7 @@ try {
   await page.getByRole('dialog').waitFor();
   await page.keyboard.press('Escape');
   await page.screenshot({ path: 'test-results/publicada-movil.png', fullPage: true });
-  console.log(`Publicación verificada: ${base}; seis recursos coinciden, shell pendiente, sin errores JS, móvil sin desbordamiento.`);
+  console.log(`Publicación verificada: ${base}; seis recursos coinciden, ${config.apiUrl ? 'pantalla de acceso configurada' : 'conexión pendiente'}, sin errores JS, móvil sin desbordamiento. No se introducen credenciales.`);
 } finally {
   await browser.close();
 }
