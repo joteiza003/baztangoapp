@@ -28,6 +28,7 @@ test('signed sessions expire and tampering fails', async () => {
   const { service, advance } = setup();
   const login = await call(service, { action: 'login', password });
   assert.equal(login.status, 200);
+  assert.equal(login.headers['X-Baztango-Backend'], 'no-request-limits-1');
   const { token } = login.body;
   assert.equal((await call(service, { action: 'context', eventId: 'e1' }, token)).status, 200);
   assert.equal((await call(service, { action: 'context', eventId: 'e1' }, `${token}x`)).status, 401);
@@ -52,21 +53,19 @@ test('rejects writes, unknown actions and oversized input', async () => {
   assert.equal((await call(service, { action: 'insert' }, token)).status, 400);
   assert.equal((await call(service, { action: 'login', password: 'x'.repeat(5000) })).status, 413);
 });
-test('limits failed logins and authenticated requests', async () => {
+test('repeated logins and session queries are not throttled by the application', async () => {
   const { service } = setup();
-  for (let attempt = 0; attempt < 10; attempt++) await call(service, { action: 'login', password: 'wrong' });
-  assert.equal((await call(service, { action: 'login', password })).status, 429);
-  const other = setup().service;
-  const { token } = (await call(other, { action: 'login', password })).body;
-  for (let attempt = 0; attempt < 60; attempt++) await call(other, { action: 'context', eventId: 'e1' }, token);
-  assert.equal((await call(other, { action: 'context', eventId: 'e1' }, token)).status, 429);
+  for (let attempt = 0; attempt < 200; attempt++) assert.equal((await call(service, { action: 'login', password: 'wrong' })).status, 401);
+  const login = await call(service, { action: 'login', password });
+  assert.equal(login.status, 200);
+  for (let attempt = 0; attempt < 200; attempt++) assert.equal((await call(service, { action: 'context', eventId: 'e1' }, login.body.token)).status, 200);
 });
 test('secret rotation invalidates existing sessions and internal errors expose no details', async () => {
   let secret = password;
   const service = createService({ getPassword: async () => secret, repository: { events: async () => [], context: async () => { throw new Error('private internal detail'); } } });
   const { token } = (await call(service, { action: 'login', password })).body;
   const error = await call(service, { action: 'context', eventId: 'e1' }, token);
-  assert.deepEqual(error.body, { error: 'SERVICE_UNAVAILABLE' });
+  assert.deepEqual(error.body, { error: 'SERVICE_UNAVAILABLE', diagnostic: 'BACKEND_ERROR', stage: 'data' });
   assert.equal(error.headers['Cache-Control'], 'no-store, private');
   secret = 'otra-clave-ficticia-con-32-caracteres';
   assert.equal((await call(service, { action: 'context', eventId: 'e1' }, token)).status, 401);
@@ -105,23 +104,10 @@ test('upstream quota errors are distinguished from application login limits with
   const secretService = createService({ repository: {}, getPassword: async () => { throw upstreamError; } });
   assert.deepEqual((await call(secretService, { action: 'login', password })).body, { error: 'ACCESS_SERVICE_BUSY', retryAfter: 60 });
 });
-test('own login limit returns remaining seconds for this fixed window', async () => {
+test('connections with or without a platform IP have no application request counter', async () => {
   const { service } = setup();
-  for (let attempt = 0; attempt < 10; attempt++) await call(service, { action: 'login', password: 'wrong' });
-  const result = await call(service, { action: 'login', password });
-  assert.deepEqual(result.body, { error: 'RATE_LIMIT', retryAfter: 20 });
-  assert.equal(result.headers['Retry-After'], '20');
-});
-test('failed logins from one connection do not block the first login from another', async () => {
-  const { service } = setup();
-  for (let attempt = 0; attempt < 10; attempt++) await call(service, { action: 'login', password: 'wrong' }, null, origin, '192.0.2.10');
-  const denied = await call(service, { action: 'login', password }, null, origin, '192.0.2.10');
-  assert.equal(denied.status, 429);
-  const allowed = await call(service, { action: 'login', password }, null, origin, '192.0.2.20');
-  assert.equal(allowed.status, 200);
-});
-test('missing platform IP uses a bounded shared fallback and does not trust client supplied headers', async () => {
-  const { service } = setup();
-  for (let attempt = 0; attempt < 10; attempt++) await service({ method: 'POST', origin, body: { action: 'login', password: 'wrong' }, headers: { 'x-forwarded-for': `192.0.2.${attempt}` } });
-  assert.equal((await service({ method: 'POST', origin, body: { action: 'login', password } })).status, 429);
+  for (let attempt = 0; attempt < 25; attempt++) {
+    assert.equal((await call(service, { action: 'login', password }, null, origin, '192.0.2.10')).status, 200);
+    assert.equal((await service({ method: 'POST', origin, body: { action: 'login', password } })).status, 200);
+  }
 });

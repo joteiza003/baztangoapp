@@ -51,7 +51,7 @@ async function api(body) {
   let data;
   try { data = await response.json(); } catch { if (response.status === 429) data = {}; else throw new Error('SERVICE_UNAVAILABLE'); }
   if (response.status === 429) throw Object.assign(new Error(['RATE_LIMIT','DATA_SERVICE_BUSY','ACCESS_SERVICE_BUSY'].includes(data.error) ? data.error : 'UPSTREAM_RATE_LIMIT'), { retryAfter: retrySeconds(response,data) });
-  if (!response.ok) throw new Error(data.error || 'SERVICE_UNAVAILABLE');
+  if (!response.ok) throw Object.assign(new Error(data.error || 'SERVICE_UNAVAILABLE'), { diagnostic: typeof data.diagnostic === 'string' && /^[A-Z][A-Z0-9_]{0,50}$/.test(data.diagnostic) ? data.diagnostic : '', stage: ['data','access'].includes(data.stage) ? data.stage : '' });
   if (requestRevision !== revision || requestToken !== state.token) throw new DOMException('Consulta descartada','AbortError');
   return data;
 }
@@ -65,7 +65,8 @@ function onError(error) {
     updateRetryButton();
     return;
   }
-  clearSession(errorMessages[error.message] || 'No se ha podido consultar el servicio. Comprueba la conexión y vuelve a acceder.');
+  const diagnostic = error.diagnostic ? ` Detalle: ${error.diagnostic}${error.stage ? ` (${error.stage})` : ''}.` : '';
+  clearSession((errorMessages[error.message] || 'No se ha podido consultar el servicio. Comprueba la conexión y vuelve a acceder.') + diagnostic);
 }
 function updateRetryButton() {
   const submit = document.querySelector('#login-form button[type="submit"]');
@@ -87,7 +88,7 @@ function copyMeta() {
 }
 function render() {
   const heading = sections[state.route];
-  app.innerHTML = `<aside class="sidebar"><div class="brand"><div class="wordmark">baztango</div><p>Consulta del evento</p></div><nav aria-label="Principal">${Object.keys(sections).map((route) => nav(route)).join('')}</nav><div class="side-foot"><p>Acceso de organización</p><strong>Solo consulta</strong>${button(state.token ? 'logout' : 'session',state.token ? 'Cerrar sesión' : 'Cuenta y sesión')}</div></aside><div class="workspace"><header class="topbar"><div class="event-meta">${state.events.length ? `<label class="sr-only" for="event-selector">Edición</label><select id="event-selector">${state.events.map((event) => `<option value="${esc(event._id)}" ${state.eventId === event._id ? 'selected' : ''}>${esc(event.title || event.eventKey)}</option>`).join('')}</select>` : '<strong>Baztango · Organización</strong>'}<span class="badge ${state.token ? 'green' : 'blue'}">${state.token ? 'Acceso de consulta' : 'Solo consulta'}</span></div><div class="copy-meta">${copyMeta()}</div><div class="top-actions">${button('refresh','Volver a consultar',state.token && state.eventId ? '' : 'disabled')}</div></header><main id="main" tabindex="-1"><div class="page-heading"><div><div class="eyebrow">${esc(heading[0])}</div><h1>${esc(heading[1])}</h1><p>${esc(heading[2])}</p></div><span class="badge">Solo consulta</span></div>${state.message ? `<div role="alert" class="notice">${esc(state.message)}</div>` : ''}${content()}<footer><span>Baztango · Consulta del evento · <span>Versión 1.0.2</span></span><span>Consultar Wix no inicia la carga desde el gestor.</span></footer></main></div><nav class="bottom-nav" aria-label="Navegación móvil">${['resumen','clientes','programa'].map((route) => nav(route,true)).join('')}${button('more',`${icon('more')}<span>Más</span>`,'aria-label="Más apartados"')}</nav>`;
+  app.innerHTML = `<aside class="sidebar"><div class="brand"><div class="wordmark">baztango</div><p>Consulta del evento</p></div><nav aria-label="Principal">${Object.keys(sections).map((route) => nav(route)).join('')}</nav><div class="side-foot"><p>Acceso de organización</p><strong>Solo consulta</strong>${button(state.token ? 'logout' : 'session',state.token ? 'Cerrar sesión' : 'Cuenta y sesión')}</div></aside><div class="workspace"><header class="topbar"><div class="event-meta">${state.events.length ? `<label class="sr-only" for="event-selector">Edición</label><select id="event-selector">${state.events.map((event) => `<option value="${esc(event._id)}" ${state.eventId === event._id ? 'selected' : ''}>${esc(event.title || event.eventKey)}</option>`).join('')}</select>` : '<strong>Baztango · Organización</strong>'}<span class="badge ${state.token ? 'green' : 'blue'}">${state.token ? 'Acceso de consulta' : 'Solo consulta'}</span></div><div class="copy-meta">${copyMeta()}</div><div class="top-actions">${button('refresh','Volver a consultar',state.token && state.eventId ? '' : 'disabled')}</div></header><main id="main" tabindex="-1"><div class="page-heading"><div><div class="eyebrow">${esc(heading[0])}</div><h1>${esc(heading[1])}</h1><p>${esc(heading[2])}</p></div><span class="badge">Solo consulta</span></div>${state.message ? `<div role="alert" class="notice">${esc(state.message)}</div>` : ''}${content()}<footer><span>Baztango · Consulta del evento · <span>Versión 1.0.3</span></span><span>Consultar Wix no inicia la carga desde el gestor.</span></footer></main></div><nav class="bottom-nav" aria-label="Navegación móvil">${['resumen','clientes','programa'].map((route) => nav(route,true)).join('')}${button('more',`${icon('more')}<span>Más</span>`,'aria-label="Más apartados"')}</nav>`;
   updateRetryButton();
 }
 function content() {

@@ -19,22 +19,13 @@ function identifier(value) {
   return value;
 }
 export function createService({ repository, getPassword, now = Date.now }) {
-  const buckets = new Map();
-  const connectionSalt = randomBytes(32);
   let passwordRequest = null;
   function readPassword() {
     if (!passwordRequest) passwordRequest = Promise.resolve().then(getPassword).finally(() => { passwordRequest = null; });
     return passwordRequest;
   }
-  function rate(key, max) {
-    const minute = Math.floor(now() / 60000);
-    for (const [bucketKey, bucket] of buckets) if (bucket.minute !== minute) buckets.delete(bucketKey);
-    const bucket = buckets.get(key) || { minute, count: 0 };
-    if (++bucket.count > max || buckets.size > 2000) fail(429, 'RATE_LIMIT', Math.max(1, Math.ceil(((minute + 1) * 60000 - now()) / 1000)));
-    buckets.set(key, bucket);
-  }
   return async function handle(request) {
-    const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, private', 'Vary': 'Origin', 'X-Content-Type-Options': 'nosniff' };
+    const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, private', 'Vary': 'Origin', 'X-Content-Type-Options': 'nosniff', 'X-Baztango-Backend': 'no-request-limits-1' };
     let readingData = false;
     try {
       if (request.origin !== ALLOWED_ORIGIN) fail(403, 'ACCESS_DENIED');
@@ -44,17 +35,11 @@ export function createService({ repository, getPassword, now = Date.now }) {
       headers['Access-Control-Expose-Headers'] = 'Retry-After';
       if (request.method === 'OPTIONS') return { status: 204, headers, body: null };
       if (request.method !== 'POST') fail(405, 'METHOD_NOT_ALLOWED');
-      rate('global', 180);
       const raw = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
       if (!raw || raw.length > 4000) fail(413, 'INVALID_BODY');
       let body;
       try { body = JSON.parse(raw); } catch { fail(400, 'INVALID_BODY'); }
       if (!body || Array.isArray(body) || typeof body !== 'object') fail(400, 'INVALID_BODY');
-      if (body.action === 'login') {
-        const ip = typeof request.ip === 'string' && request.ip.length <= 100 ? request.ip.trim().toLowerCase() : '';
-        const connection = ip ? createHmac('sha256', connectionSalt).update(ip).digest('hex') : 'unknown';
-        rate(`login:${connection}`, 10);
-      }
       const token = request.authorization?.startsWith('Bearer ') ? request.authorization.slice(7) : '';
       if (body.action !== 'login' && (!token || token.length > 1000 || token.split('.').length !== 2)) fail(401, 'ACCESS_DENIED');
       const password = await readPassword();
@@ -72,7 +57,6 @@ export function createService({ repository, getPassword, now = Date.now }) {
       let claims;
       try { claims = JSON.parse(Buffer.from(payload, 'base64url').toString()); } catch { fail(401, 'ACCESS_DENIED'); }
       if (claims.aud !== ALLOWED_ORIGIN || !Number.isSafeInteger(claims.exp) || claims.exp <= now() || claims.exp > now() + 900000) fail(401, 'ACCESS_DENIED');
-      rate(`session:${signature}`, 60);
       const eventId = identifier(body.eventId);
       readingData = true;
       if (body.action === 'context') return { status: 200, headers, body: await repository.context(eventId) };
@@ -106,6 +90,10 @@ export function createService({ repository, getPassword, now = Date.now }) {
       const status = known ? error.status : upstreamLimit ? 429 : 503;
       const code = known ? error.code : upstreamLimit ? readingData ? 'DATA_SERVICE_BUSY' : 'ACCESS_SERVICE_BUSY' : 'SERVICE_UNAVAILABLE';
       const body = { error: code };
+      if (!known && !upstreamLimit) {
+        body.diagnostic = /unknown encoding|unsupported encoding/i.test(String(error.message)) ? 'UNSUPPORTED_ENCODING' : typeof error.code === 'string' && /^[A-Z][A-Z0-9_]{0,50}$/.test(error.code) ? error.code : 'BACKEND_ERROR';
+        body.stage = readingData ? 'data' : 'access';
+      }
       if (status === 429) {
         const retryAfter = known ? error.retryAfter || 60 : 60;
         headers['Retry-After'] = String(retryAfter);
