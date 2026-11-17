@@ -20,3 +20,5 @@ No se han probado dispositivos físicos, Safari de iPhone/iPad, Chrome de Androi
 ## Publicación
 
 GitHub Pages sirve únicamente `main:/docs`, sin workflow propio ni secretos de despliegue. Se comprueba por separado el despliegue y los recursos HTTPS de producción después del push. El backend copiable y el ZIP sintético están en el repositorio, fuera del directorio servido por Pages.
+
+Publicación inicial verificada: https://joteiza003.github.io/baztangoapp/ . GitHub Pages `status=built`, commit inicial `668ea288877e51ee92bb61d9da36031190f34ce4`; [ejecución de despliegue completada correctamente](https://github.com/joteiza003/baztangoapp/actions/runs/43990649504). `node scripts/check-live.js` confirma HTTP 200 y contenido idéntico de index.html, app.js, catalogue.js, config.js, styles.css y favicon.svg, estado Conexión pendiente en navegador real headless, sin errores JS, menú móvil/Escape y ausencia de desbordamiento a 320 px. No se ha probado conexión Wix real.

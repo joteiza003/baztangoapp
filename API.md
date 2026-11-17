@@ -6,7 +6,7 @@ Un endpoint de producción: `POST https://TU-SITIO/_functions/baztango`, JSON, T
 |---|---|---|
 | login | password | token, expiresAt (Unix ms), events |
 | context | eventId | event, version |
-| summary | eventId, versionId | accepted, arrived, pendingCents, issues, requests |
+| summary | eventId, versionId | accepted, arrived, housed, dueCents, paidNetCents, pendingCents, refundPendingCents, issues, requests |
 | list | resource, search, filters, page, limit, order | items, total, page, limit |
 | detail | personId | person, reservation, people, payments, allocations, participations, activities, stays, rooms |
 | requestDetail | requestId | request (con contacto) |

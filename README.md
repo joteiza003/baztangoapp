@@ -42,6 +42,8 @@ Los saldos individuales, netos, imputaciones y sesiones proceden de proyecciones
 
 Node.js 22 o posterior. `npm ci`, `npm test`, `npm run serve`. Frontend sin dependencias de producción. Playwright es dependencia de desarrollo para pruebas emuladas: `npx playwright install chromium`, `npx playwright test`. No hay servicio real de Wix durante estas pruebas. Los fixtures del navegador son interceptaciones exclusivas de QA y no forman parte del frontend publicado.
 
+Consulta `VERIFICACION.md` para resultados y límites de cobertura. `node scripts/check-live.js` comprueba la publicación inicial en estado Conexión pendiente y compara los seis recursos públicos con el checkout; debe adaptarse después de conectar Wix, pues ese estado dejará de ser el esperado.
+
 Pages se configura en Settings → Pages → Deploy from a branch → `main` → `/docs`. No se requiere secret de GitHub ni workflow personalizado. Solo se sirve `docs/`; el código backend y el paquete sintético permanecen descargables desde el repositorio público.
 
 ## Documentación oficial contrastada
