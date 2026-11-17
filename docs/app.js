@@ -1,4 +1,5 @@
 import { config } from './config.js';
+import { retrySeconds } from './retry.js';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
@@ -9,6 +10,7 @@ const state = { route:'resumen', resource:'personas', query:{}, token:'', expire
 let lastActivity = Date.now();
 let revision = 0;
 let controller = new AbortController();
+let retryAt = 0;
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const ref = (value) => typeof value === 'object' && value ? value._id : value;
 const money = (value) => Number.isSafeInteger(value) ? new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(value/100) : 'Sin dato';
@@ -47,13 +49,31 @@ async function api(body) {
   if (body.action !== 'login' && (!state.token || Date.now() >= state.expiresAt)) throw new Error('SESSION_EXPIRED');
   const response = await fetch(config.apiUrl,{method:'POST',headers:{'Content-Type':'application/json',...(state.token ? {Authorization:`Bearer ${state.token}`} : {})},body:JSON.stringify(body),credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:controller.signal});
   let data;
-  try { data = await response.json(); } catch { throw new Error('SERVICE_UNAVAILABLE'); }
+  try { data = await response.json(); } catch { if (response.status === 429) data = {}; else throw new Error('SERVICE_UNAVAILABLE'); }
+  if (response.status === 429) throw Object.assign(new Error(['RATE_LIMIT','DATA_SERVICE_BUSY','ACCESS_SERVICE_BUSY'].includes(data.error) ? data.error : 'UPSTREAM_RATE_LIMIT'), { retryAfter: retrySeconds(response,data) });
   if (!response.ok) throw new Error(data.error || 'SERVICE_UNAVAILABLE');
   if (requestRevision !== revision || requestToken !== state.token) throw new DOMException('Consulta descartada','AbortError');
   return data;
 }
 const errorMessages = {ACCESS_DENIED:'Acceso denegado. Comprueba la contraseña o vuelve a acceder.',SESSION_EXPIRED:'La sesión ha caducado. Vuelve a acceder.',VERSION_EXPIRED:'La copia ha cambiado. Accede de nuevo para consultar la versión actual.',NO_PUBLISHED_DATA:'Esta edición aún no tiene una copia completa publicada.',RATE_LIMIT:'Se ha alcanzado el límite de consultas. Espera un minuto y vuelve a acceder.',CONFIGURATION_PENDING:'El servicio de consulta todavía necesita configuración en Wix.',DETAIL_LIMIT:'El detalle supera el límite de consulta. Reduce el alcance desde el listado.',SUMMARY_LIMIT:'La copia supera el límite del resumen. Consulta los listados.',SEARCH_LIMIT:'La búsqueda abarca demasiados registros. Aplica filtros más específicos.',INVALID_QUERY:'La consulta no es válida. Revisa los filtros.',INVALID_REFERENCE:'La copia contiene una referencia incoherente. Necesita revisión antes de consultarla.'};
-function onError(error) { if (error.name !== 'AbortError') clearSession(errorMessages[error.message] || 'No se ha podido consultar el servicio. Comprueba la conexión y vuelve a acceder.'); }
+function onError(error) {
+  if (error.name === 'AbortError') return;
+  if (error.retryAfter || ['RATE_LIMIT','DATA_SERVICE_BUSY','ACCESS_SERVICE_BUSY','UPSTREAM_RATE_LIMIT'].includes(error.message)) {
+    retryAt = Date.now() + (error.retryAfter || 60) * 1000;
+    const message = error.message === 'DATA_SERVICE_BUSY' ? 'Wix ha limitado temporalmente las consultas de datos. No indica una contraseña incorrecta.' : error.message === 'ACCESS_SERVICE_BUSY' ? 'El servicio de acceso de Wix está temporalmente ocupado.' : 'El servicio ha pedido una pausa temporal. Puede afectar incluso al primer intento de acceso.';
+    clearSession(`${message} Podrás volver a intentarlo cuando termine la cuenta atrás.`);
+    updateRetryButton();
+    return;
+  }
+  clearSession(errorMessages[error.message] || 'No se ha podido consultar el servicio. Comprueba la conexión y vuelve a acceder.');
+}
+function updateRetryButton() {
+  const submit = document.querySelector('#login-form button[type="submit"]');
+  if (!submit) return;
+  const seconds = Math.max(0,Math.ceil((retryAt-Date.now())/1000));
+  submit.disabled = state.loading || seconds > 0;
+  submit.textContent = seconds > 0 ? `Reintentar en ${seconds} s` : state.loading ? 'Verificando…' : 'Acceder';
+}
 function scope() { return {eventId:state.context.event._id,versionId:state.context.version._id}; }
 function query() { return state.query[state.resource] || (state.query[state.resource] = {search:'',filters:state.resource === 'personas' ? {state:'accepted'} : {},page:0,limit:25,order:'default'}); }
 function copyMeta() {
@@ -68,6 +88,7 @@ function copyMeta() {
 function render() {
   const heading = sections[state.route];
   app.innerHTML = `<aside class="sidebar"><div class="brand"><div class="wordmark">baztango</div><p>Consulta del evento</p></div><nav aria-label="Principal">${Object.keys(sections).map((route) => nav(route)).join('')}</nav><div class="side-foot"><p>Acceso de organización</p><strong>Solo consulta</strong>${button(state.token ? 'logout' : 'session',state.token ? 'Cerrar sesión' : 'Cuenta y sesión')}</div></aside><div class="workspace"><header class="topbar"><div class="event-meta">${state.events.length ? `<label class="sr-only" for="event-selector">Edición</label><select id="event-selector">${state.events.map((event) => `<option value="${esc(event._id)}" ${state.eventId === event._id ? 'selected' : ''}>${esc(event.title || event.eventKey)}</option>`).join('')}</select>` : '<strong>Baztango · Organización</strong>'}<span class="badge ${state.token ? 'green' : 'blue'}">${state.token ? 'Acceso de consulta' : 'Solo consulta'}</span></div><div class="copy-meta">${copyMeta()}</div><div class="top-actions">${button('refresh','Volver a consultar',state.token && state.eventId ? '' : 'disabled')}</div></header><main id="main" tabindex="-1"><div class="page-heading"><div><div class="eyebrow">${esc(heading[0])}</div><h1>${esc(heading[1])}</h1><p>${esc(heading[2])}</p></div><span class="badge">Solo consulta</span></div>${state.message ? `<div role="alert" class="notice">${esc(state.message)}</div>` : ''}${content()}<footer><span>Baztango · Consulta del evento</span><span>Consultar Wix no inicia la carga desde el gestor.</span></footer></main></div><nav class="bottom-nav" aria-label="Navegación móvil">${['resumen','clientes','programa'].map((route) => nav(route,true)).join('')}${button('more',`${icon('more')}<span>Más</span>`,'aria-label="Más apartados"')}</nav>`;
+  updateRetryButton();
 }
 function content() {
   if (!state.token) return configured() ? loginView() : pendingView();
@@ -224,6 +245,7 @@ document.addEventListener('submit',async (event) => {
   const data = new FormData(form);
   try {
     if (form.id === 'login-form') {
+      if (state.loading || Date.now() < retryAt) return;
       const password = data.get('password'); form.reset(); state.loading = true; state.message = ''; render();
       const result = await api({action:'login',password});
       if (typeof result.token !== 'string' || !Number.isFinite(result.expiresAt) || !Array.isArray(result.events)) throw new Error('SERVICE_UNAVAILABLE');
@@ -244,4 +266,5 @@ for (const eventName of ['pointerdown','keydown']) document.addEventListener(eve
 window.addEventListener('offline',() => clearSession('Sin conexión. Los datos de consulta se han retirado de la pantalla.'));
 window.addEventListener('pagehide',() => clearSession());
 setInterval(() => { if (state.token && (Date.now() >= state.expiresAt || Date.now()-lastActivity >= 900000)) clearSession('La sesión ha caducado. Vuelve a acceder.'); },1000);
+setInterval(updateRetryButton,1000);
 render();

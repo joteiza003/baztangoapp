@@ -3,7 +3,13 @@ import { createHmac, createHash, randomBytes, timingSafeEqual } from 'crypto';
 export const ALLOWED_ORIGIN = 'https://joteiza003.github.io';
 const resources = new Set(['personas', 'solicitudes', 'reservas', 'pagos', 'imputaciones', 'actividades', 'participaciones', 'habitaciones', 'estancias', 'cajas', 'movimientos', 'gastos']);
 const filterFields = new Set(['state', 'paymentState', 'arrivalState', 'danceRole', 'eventDate', 'category', 'activityRef', 'attendanceState', 'roomType', 'roomRef', 'businessDate', 'cashSessionRef', 'personRef', 'reservationRef', 'paymentRef', 'expenseRef', 'needsReview', 'hasDataIssues', 'eligible', 'packageName', 'isTeam', 'isGuest', 'country', 'requestedPackage', 'requestedRole', 'reason', 'paymentDate', 'kind', 'method', 'destination', 'receivedBy']);
-export function fail(status, code) { throw Object.assign(new Error(code), { status, code }); }
+class ServiceError extends Error {
+  constructor(status, code, retryAfter) {
+    super(code);
+    Object.assign(this, { status, code, retryAfter });
+  }
+}
+export function fail(status, code, retryAfter) { throw new ServiceError(status, code, retryAfter); }
 export function normalize(value) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' '); }
 function equal(left, right) {
   return timingSafeEqual(createHash('sha256').update(left).digest(), createHash('sha256').update(right).digest());
@@ -14,20 +20,27 @@ function identifier(value) {
 }
 export function createService({ repository, getPassword, now = Date.now }) {
   const buckets = new Map();
+  let passwordRequest = null;
+  function readPassword() {
+    if (!passwordRequest) passwordRequest = Promise.resolve().then(getPassword).finally(() => { passwordRequest = null; });
+    return passwordRequest;
+  }
   function rate(key, max) {
     const minute = Math.floor(now() / 60000);
     for (const [bucketKey, bucket] of buckets) if (bucket.minute !== minute) buckets.delete(bucketKey);
     const bucket = buckets.get(key) || { minute, count: 0 };
-    if (++bucket.count > max || buckets.size > 2000) fail(429, 'RATE_LIMIT');
+    if (++bucket.count > max || buckets.size > 2000) fail(429, 'RATE_LIMIT', Math.max(1, Math.ceil(((minute + 1) * 60000 - now()) / 1000)));
     buckets.set(key, bucket);
   }
   return async function handle(request) {
     const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, private', 'Vary': 'Origin', 'X-Content-Type-Options': 'nosniff' };
+    let readingData = false;
     try {
       if (request.origin !== ALLOWED_ORIGIN) fail(403, 'ACCESS_DENIED');
       headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGIN;
       headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
       headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type';
+      headers['Access-Control-Expose-Headers'] = 'Retry-After';
       if (request.method === 'OPTIONS') return { status: 204, headers, body: null };
       if (request.method !== 'POST') fail(405, 'METHOD_NOT_ALLOWED');
       rate('global', 180);
@@ -37,17 +50,18 @@ export function createService({ repository, getPassword, now = Date.now }) {
       try { body = JSON.parse(raw); } catch { fail(400, 'INVALID_BODY'); }
       if (!body || Array.isArray(body) || typeof body !== 'object') fail(400, 'INVALID_BODY');
       if (body.action === 'login') rate('login', 10);
-      const password = await getPassword();
+      const token = request.authorization?.startsWith('Bearer ') ? request.authorization.slice(7) : '';
+      if (body.action !== 'login' && (!token || token.length > 1000 || token.split('.').length !== 2)) fail(401, 'ACCESS_DENIED');
+      const password = await readPassword();
       if (typeof password !== 'string' || password.length < 20) fail(503, 'CONFIGURATION_PENDING');
       const sign = (payload) => createHmac('sha256', password).update(`baztango-session-v1:${payload}`).digest('base64url');
       if (body.action === 'login') {
         if (typeof body.password !== 'string' || !equal(body.password, password)) fail(401, 'ACCESS_DENIED');
         const expiresAt = now() + 900000;
         const payload = Buffer.from(JSON.stringify({ exp: expiresAt, nonce: randomBytes(24).toString('hex'), aud: ALLOWED_ORIGIN })).toString('base64url');
+        readingData = true;
         return { status: 200, headers, body: { token: `${payload}.${sign(payload)}`, expiresAt, events: await repository.events() } };
       }
-      const token = request.authorization?.startsWith('Bearer ') ? request.authorization.slice(7) : '';
-      if (!token || token.length > 1000) fail(401, 'ACCESS_DENIED');
       const [payload, signature, extra] = token.split('.');
       if (extra || !payload || !signature || !equal(signature, sign(payload))) fail(401, 'ACCESS_DENIED');
       let claims;
@@ -55,6 +69,7 @@ export function createService({ repository, getPassword, now = Date.now }) {
       if (claims.aud !== ALLOWED_ORIGIN || !Number.isSafeInteger(claims.exp) || claims.exp <= now() || claims.exp > now() + 900000) fail(401, 'ACCESS_DENIED');
       rate(`session:${signature}`, 60);
       const eventId = identifier(body.eventId);
+      readingData = true;
       if (body.action === 'context') return { status: 200, headers, body: await repository.context(eventId) };
       const versionId = identifier(body.versionId);
       let result;
@@ -81,9 +96,17 @@ export function createService({ repository, getPassword, now = Date.now }) {
       else fail(400, 'INVALID_QUERY');
       return { status: 200, headers, body: result };
     } catch (error) {
-      const status = Number.isInteger(error.status) ? error.status : 503;
-      if (status === 429) headers['Retry-After'] = '60';
-      return { status, headers, body: { error: error.code && error.status ? error.code : 'SERVICE_UNAVAILABLE' } };
+      const known = error instanceof ServiceError;
+      const upstreamLimit = !known && (Number(error.status || error.httpStatus || error.response?.status) === 429 || ['RATE_LIMIT', 'TOO_MANY_REQUESTS', 'RESOURCE_EXHAUSTED'].includes(error.code));
+      const status = known ? error.status : upstreamLimit ? 429 : 503;
+      const code = known ? error.code : upstreamLimit ? readingData ? 'DATA_SERVICE_BUSY' : 'ACCESS_SERVICE_BUSY' : 'SERVICE_UNAVAILABLE';
+      const body = { error: code };
+      if (status === 429) {
+        const retryAfter = known ? error.retryAfter || 60 : 60;
+        headers['Retry-After'] = String(retryAfter);
+        body.retryAfter = retryAfter;
+      }
+      return { status, headers, body };
     }
   };
 }

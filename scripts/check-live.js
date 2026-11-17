@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { config } from '../docs/config.js';
 
 const base = 'https://joteiza003.github.io/baztangoapp/';
-for (const file of ['index.html', 'app.js', 'catalogue.js', 'config.js', 'styles.css', 'favicon.svg']) {
+for (const file of ['index.html', 'app.js', 'catalogue.js', 'config.js', 'retry.js', 'styles.css', 'favicon.svg']) {
   const response = await fetch(new URL(file, base), { cache: 'no-store' });
   assert.equal(response.status, 200, file);
   const local = await readFile(new URL(`../docs/${file}`, import.meta.url), 'utf8');
@@ -31,7 +31,7 @@ try {
   await page.getByRole('dialog').waitFor();
   await page.keyboard.press('Escape');
   await page.screenshot({ path: 'test-results/publicada-movil.png', fullPage: true });
-  console.log(`Publicación verificada: ${base}; seis recursos coinciden, ${config.apiUrl ? 'pantalla de acceso configurada' : 'conexión pendiente'}, sin errores JS, móvil sin desbordamiento. No se introducen credenciales.`);
+  console.log(`Publicación verificada: ${base}; siete recursos coinciden, ${config.apiUrl ? 'pantalla de acceso configurada' : 'conexión pendiente'}, sin errores JS, móvil sin desbordamiento. No se introducen credenciales.`);
 } finally {
   await browser.close();
 }

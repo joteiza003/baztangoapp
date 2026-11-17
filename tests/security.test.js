@@ -80,3 +80,35 @@ test('invalid calendar night and unauthorized detail paths fail before data read
   assert.equal((await call(service, { action: 'activityDetail', eventId: 'e1', versionId: 'v1', activityId: 'a1', group: 'all' }, token)).status, 400);
   assert.deepEqual(reads, []);
 });
+test('anonymous requests do not consume Secrets Manager calls', async () => {
+  let calls = 0;
+  const service = createService({ repository: {}, getPassword: async () => { calls++; return password; } });
+  assert.equal((await call(service, { action: 'context', eventId: 'e1' })).status, 401);
+  assert.equal(calls, 0);
+});
+test('concurrent credential checks share one in-flight secret read without caching the value', async () => {
+  let calls = 0;
+  const service = createService({ repository: { events: async () => [] }, getPassword: async () => { calls++; await new Promise((resolve) => setTimeout(resolve, 10)); return password; } });
+  const results = await Promise.all([call(service, { action: 'login', password }), call(service, { action: 'login', password })]);
+  assert.ok(results.every((result) => result.status === 200));
+  assert.equal(calls, 1);
+  await call(service, { action: 'login', password });
+  assert.equal(calls, 2);
+});
+test('upstream quota errors are distinguished from application login limits without leaking details', async () => {
+  const upstreamError = Object.assign(new Error('private backend details'), { status: 429, code: 'RATE_LIMIT' });
+  const service = createService({ getPassword: async () => password, repository: { events: async () => { throw upstreamError; } } });
+  const result = await call(service, { action: 'login', password });
+  assert.equal(result.status, 429);
+  assert.deepEqual(result.body, { error: 'DATA_SERVICE_BUSY', retryAfter: 60 });
+  assert.equal(result.headers['Access-Control-Expose-Headers'], 'Retry-After');
+  const secretService = createService({ repository: {}, getPassword: async () => { throw upstreamError; } });
+  assert.deepEqual((await call(secretService, { action: 'login', password })).body, { error: 'ACCESS_SERVICE_BUSY', retryAfter: 60 });
+});
+test('own login limit returns remaining seconds for this fixed window', async () => {
+  const { service } = setup();
+  for (let attempt = 0; attempt < 10; attempt++) await call(service, { action: 'login', password: 'wrong' });
+  const result = await call(service, { action: 'login', password });
+  assert.deepEqual(result.body, { error: 'RATE_LIMIT', retryAfter: 20 });
+  assert.equal(result.headers['Retry-After'], '20');
+});
