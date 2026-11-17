@@ -7,7 +7,12 @@ import { createRepository } from 'backend/baztango/repository';
 
 const baztangoGetSecret = elevate(secrets.getSecretValue);
 const baztangoService = createService({
-  repository: createRepository(wixData),
+  repository: createRepository(wixData, {
+    BTEventos: 'Import1', BTVersiones: 'Import2', BTReservas: 'Import3', BTPersonas: 'Import4',
+    BTPagos: 'Import5', BTImputaciones: 'Import6', BTActividades: 'Import7', BTParticipaciones: 'Import8',
+    BTHabitaciones: 'Import9', BTEstancias: 'Import10', BTCajas: 'Import11', BTMovimientos: 'Import12',
+    BTGastos: 'Import13', BTSolicitudes: 'Import14'
+  }),
   getPassword: async () => {
     const secret = await baztangoGetSecret('BAZTANGO_APP_ACCESS_PASSWORD');
     return typeof secret === 'string' ? secret : secret.value;

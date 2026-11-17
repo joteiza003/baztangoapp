@@ -18,6 +18,29 @@ La interfaz se publica en GitHub Pages desde `main:/docs`. El backend se instala
 
 El usuario ha comunicado que ha completado la preparación en Wix, incluido el secret y los archivos backend. Las comprobaciones anónimas confirman que el endpoint está publicado y protege el acceso. El login autorizado, los permisos de las colecciones y la primera copia real todavía requieren comprobación por el operador. Las pruebas locales usan exclusivamente datos ficticios.
 
+## IDs reales de las colecciones de este sitio
+
+El editor Wix muestra nombres y un ID interno distinto entre paréntesis. En este sitio las colecciones importadas tienen IDs Import1–Import14; cambiar el nombre visible no cambia esos IDs. El adaptador mantiene el esquema canónico y recibe una correspondencia fija de backend, sin permitir elegir colecciones desde el navegador:
+
+| Esquema canónico | ID real Wix |
+|---|---|
+| BTEventos | Import1 |
+| BTVersiones | Import2 |
+| BTReservas | Import3 |
+| BTPersonas | Import4 |
+| BTPagos | Import5 |
+| BTImputaciones | Import6 |
+| BTActividades | Import7 |
+| BTParticipaciones | Import8 |
+| BTHabitaciones | Import9 |
+| BTEstancias | Import10 |
+| BTCajas | Import11 |
+| BTMovimientos | Import12 |
+| BTGastos | Import13 |
+| BTSolicitudes | Import14 |
+
+Esta correspondencia está en la llamada createRepository(wixData, collectionIds) del fragmento HTTP. El repositorio sigue admitiendo los IDs canónicos por defecto para otros sitios. No se han renombrado, borrado ni recreado colecciones ni modificado sus registros. Las referencias entre registros siguen usando los IDs de los elementos Wix. Un sitio distinto debe comprobar sus propios IDs; no debe copiar a ciegas Import1–Import14.
+
 ## Arquitectura y acceso
 
 GitHub Pages aloja únicamente HTML/CSS/JS. Wix HTTP Functions autentica y consulta las colecciones privadas. Esta arquitectura sustituye la propuesta previa de servidor externo + cuentas Members: la contraseña compartida **no identifica a cada operador** ni ofrece revocación individual. No requiere configurar OAuth Headless/Members para entrar en este panel.

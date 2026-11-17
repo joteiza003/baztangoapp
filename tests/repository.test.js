@@ -107,3 +107,12 @@ test('expense payment lookup validates the referenced expense snapshot', async (
   data.tables.BTGastos[0].versionRef = 'v2';
   await assert.rejects(createRepository(data).list(request), { code: 'INVALID_REFERENCE' });
 });
+test('backend collection mapping supports Wix assigned import IDs without changing the schema', async () => {
+  const data = database({ Import1: [{ _id: 'e1', title: 'Edición ficticia', isActive: true, currentVersionRef: 'v1' }], Import2: [{ _id: 'v1', eventRef: 'e1', state: 'ready', publishedAt: '2026-11-17', schemaVersion: 1 }], Import4: [{ _id: 'p1', ...scope, fullName: 'Persona ficticia', state: 'accepted' }] });
+  const repository = createRepository(data, { BTEventos: 'Import1', BTVersiones: 'Import2', BTPersonas: 'Import4' });
+  assert.equal((await repository.events())[0].title, 'Edición ficticia');
+  assert.equal((await repository.context('e1', 'v1')).version._id, 'v1');
+  const result = await repository.list({ resource: 'personas', eventId: 'e1', versionId: 'v1', search: '', filters: {}, page: 0, limit: 25 });
+  assert.equal(result.items[0]._id, 'p1');
+  assert.ok(data.calls.some((call) => call.table === 'Import4'));
+});

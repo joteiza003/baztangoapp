@@ -7,10 +7,11 @@ const pick = (row, fields) => Object.fromEntries(fields.split(' ').filter((field
 const searchFields = { personas: 'searchText', solicitudes: 'searchText', reservas: 'reservationCode', pagos: 'paymentCode', actividades: 'name', habitaciones: 'unitCode', gastos: 'concept', movimientos: 'concept', cajas: 'businessDate' };
 const references = { reservationRef: 'reservas', personRef: 'personas', paymentRef: 'pagos', expenseRef: 'gastos', activityRef: 'actividades', roomRef: 'habitaciones', cashSessionRef: 'cajas' };
 
-export function createRepository(data) {
-  const base = (resource, eventId, versionId) => data.query(schema[resource][0]).eq('eventRef', eventId).eq('versionRef', versionId);
+export function createRepository(data, collectionIds = {}) {
+  const collectionId = (name) => collectionIds[name] || name;
+  const base = (resource, eventId, versionId) => data.query(collectionId(schema[resource][0])).eq('eventRef', eventId).eq('versionRef', versionId);
   async function getScoped(resource, id, eventId, versionId) {
-    const row = await data.get(schema[resource][0], id, options);
+    const row = await data.get(collectionId(schema[resource][0]), id, options);
     if (!row || refId(row.eventRef) !== eventId || refId(row.versionRef) !== versionId) fail(409, 'INVALID_REFERENCE');
     return row;
   }
@@ -26,12 +27,12 @@ export function createRepository(data) {
     return rows;
   }
   async function context(eventId, versionId) {
-    const event = await data.get('BTEventos', eventId, options);
+    const event = await data.get(collectionId('BTEventos'), eventId, options);
     if (!event?.isActive) fail(403, 'ACCESS_DENIED');
     const current = refId(event.currentVersionRef);
     if (!current) fail(409, 'NO_PUBLISHED_DATA');
     if (versionId && current !== versionId) fail(409, 'VERSION_EXPIRED');
-    const version = await data.get('BTVersiones', current, options);
+    const version = await data.get(collectionId('BTVersiones'), current, options);
     if (!version || refId(version.eventRef) !== eventId || version.state !== 'ready' || !version.publishedAt || version.schemaVersion !== 1) fail(409, 'NO_PUBLISHED_DATA');
     return { event: pick(event, '_id title eventKey year startDate endDate timeZone currency warningMinutes staleMinutes'), version: pick(version, '_id title capturedAt publishedAt schemaVersion personCount paymentCount recordCount') };
   }
@@ -192,7 +193,7 @@ export function createRepository(data) {
     return { room: project('habitaciones', room), night, assigned: items.length, free: !unknownDates && room.isAvailable === true && Number.isSafeInteger(room.capacity) && room.capacity > 0 ? Math.max(room.capacity - items.length, 0) : null, unknownDates, overCapacity: Number.isSafeInteger(room.capacity) ? items.length > room.capacity : null, items };
   }
   return {
-    events: async () => { const result = await data.query('BTEventos').eq('isActive', true).ascending('eventKey').limit(100).find(options); return result.items.map((row) => pick(row, '_id title eventKey currentVersionRef')); },
+    events: async () => { const result = await data.query(collectionId('BTEventos')).eq('isActive', true).ascending('eventKey').limit(100).find(options); return result.items.map((row) => pick(row, '_id title eventKey currentVersionRef')); },
     context, list: queryList, summary, detail, requestDetail, activityDetail, roomDetail
   };
 }
