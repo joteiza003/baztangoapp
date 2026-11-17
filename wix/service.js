@@ -20,6 +20,7 @@ function identifier(value) {
 }
 export function createService({ repository, getPassword, now = Date.now }) {
   const buckets = new Map();
+  const connectionSalt = randomBytes(32);
   let passwordRequest = null;
   function readPassword() {
     if (!passwordRequest) passwordRequest = Promise.resolve().then(getPassword).finally(() => { passwordRequest = null; });
@@ -49,7 +50,11 @@ export function createService({ repository, getPassword, now = Date.now }) {
       let body;
       try { body = JSON.parse(raw); } catch { fail(400, 'INVALID_BODY'); }
       if (!body || Array.isArray(body) || typeof body !== 'object') fail(400, 'INVALID_BODY');
-      if (body.action === 'login') rate('login', 10);
+      if (body.action === 'login') {
+        const ip = typeof request.ip === 'string' && request.ip.length <= 100 ? request.ip.trim().toLowerCase() : '';
+        const connection = ip ? createHmac('sha256', connectionSalt).update(ip).digest('hex') : 'unknown';
+        rate(`login:${connection}`, 10);
+      }
       const token = request.authorization?.startsWith('Bearer ') ? request.authorization.slice(7) : '';
       if (body.action !== 'login' && (!token || token.length > 1000 || token.split('.').length !== 2)) fail(401, 'ACCESS_DENIED');
       const password = await readPassword();

@@ -19,7 +19,7 @@ async function baztangoHandle(request, method) {
   if (method === 'POST') {
     try { body = await request.body.text(); } catch { return response({ status: 400, headers: { 'Cache-Control': 'no-store' }, body: JSON.stringify({ error: 'INVALID_BODY' }) }); }
   }
-  const result = await baztangoService({ method, origin: request.headers.origin || request.headers.Origin || '', authorization: request.headers.authorization || request.headers.Authorization || '', body });
+  const result = await baztangoService({ method, ip: request.ip, origin: request.headers.origin || request.headers.Origin || '', authorization: request.headers.authorization || request.headers.Authorization || '', body });
   return response({ status: result.status, headers: result.headers, body: result.body === null ? '' : JSON.stringify(result.body) });
 }
 

@@ -28,7 +28,7 @@ export async function installApi(page) {
   await page.route('**/config.js',(route)=>route.fulfill({contentType:'text/javascript',body:"export const config={apiUrl:'https://qa.example.invalid/_functions/baztango'};"}));
   await page.route('https://qa.example.invalid/_functions/baztango',async(route)=>{
     const request=route.request();
-    const response=await service({method:request.method(),origin:'https://joteiza003.github.io',authorization:request.headers().authorization,body:request.postData()});
+    const response=await service({method:request.method(),ip:'192.0.2.1',origin:'https://joteiza003.github.io',authorization:request.headers().authorization,body:request.postData()});
     await route.fulfill({status:response.status,headers:{...response.headers,'Access-Control-Allow-Origin':'http://127.0.0.1:4187'},body:response.body===null?'':JSON.stringify(response.body)});
   });
   return queries;

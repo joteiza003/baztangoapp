@@ -10,7 +10,7 @@ function setup() {
   const repository = { events: async () => [{ _id: 'e1' }], context: async (id, version) => { reads.push([id, version]); return { event: { _id: id }, version: { _id: 'v1' } }; }, list: async (request) => { reads.push(request); return { items: [], total: 0 }; }, summary: async () => ({}), detail: async () => ({}) };
   return { service: createService({ repository, getPassword: async () => password, now: () => now }), reads, advance: () => { now += 901000; } };
 }
-const call = (service, body, token, suppliedOrigin = origin) => service({ method: 'POST', origin: suppliedOrigin, authorization: token ? `Bearer ${token}` : '', body });
+const call = (service, body, token, suppliedOrigin = origin, ip = '192.0.2.1') => service({ method: 'POST', origin: suppliedOrigin, authorization: token ? `Bearer ${token}` : '', body, ip });
 test('denies anonymous queries and incorrect passwords without data reads', async () => {
   const { service, reads } = setup();
   assert.equal((await call(service, { action: 'list' })).status, 401);
@@ -111,4 +111,17 @@ test('own login limit returns remaining seconds for this fixed window', async ()
   const result = await call(service, { action: 'login', password });
   assert.deepEqual(result.body, { error: 'RATE_LIMIT', retryAfter: 20 });
   assert.equal(result.headers['Retry-After'], '20');
+});
+test('failed logins from one connection do not block the first login from another', async () => {
+  const { service } = setup();
+  for (let attempt = 0; attempt < 10; attempt++) await call(service, { action: 'login', password: 'wrong' }, null, origin, '192.0.2.10');
+  const denied = await call(service, { action: 'login', password }, null, origin, '192.0.2.10');
+  assert.equal(denied.status, 429);
+  const allowed = await call(service, { action: 'login', password }, null, origin, '192.0.2.20');
+  assert.equal(allowed.status, 200);
+});
+test('missing platform IP uses a bounded shared fallback and does not trust client supplied headers', async () => {
+  const { service } = setup();
+  for (let attempt = 0; attempt < 10; attempt++) await service({ method: 'POST', origin, body: { action: 'login', password: 'wrong' }, headers: { 'x-forwarded-for': `192.0.2.${attempt}` } });
+  assert.equal((await service({ method: 'POST', origin, body: { action: 'login', password } })).status, 429);
 });
