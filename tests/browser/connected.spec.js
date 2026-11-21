@@ -34,9 +34,9 @@ test('all sections, activity groups, room nights and expense links work with fic
   await page.getByRole('button',{name:'Programa',exact:true}).first().click();
   await page.getByRole('button',{name:/Consultar Cóctel/}).click();
   await expect(page.getByRole('button',{name:/Con derecho · 1/})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Ver ficha de/})).toBeVisible();
   await page.getByRole('button',{name:/Asistencia registrada · 0/}).click();
   await expect(page.getByText('0 personas en este grupo')).toBeVisible();
-  await page.getByRole('button',{name:'← Volver',exact:true}).click();
   await page.getByRole('button',{name:'Alojamiento',exact:true}).first().click();
   await page.getByRole('button',{name:'Consultar APT-TEST'}).click();
   await page.getByLabel('Noche de alojamiento').fill('2026-11-27');

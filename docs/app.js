@@ -1,8 +1,8 @@
 import { config } from './config.js';
 import { retrySeconds } from './retry.js';
-import { sections, resources, tabs, labels, booleanFields, quickChips } from './catalogue.js?v=1.1.0';
+import { sections, resources, tabs, labels, booleanFields, quickChips, typeKeyFor } from './catalogue.js?v=1.1.0';
 import { esc, ref, money, date, shiftDay, display, initials, pill, button, csvCell } from './format.js?v=1.1.0';
-import { icon, navButton, loginView, pendingView, skeleton, dashboardView, listView, agendaView, occupancyView, personView, activityView, roomView, facts } from './views.js?v=1.1.0';
+import { icon, navButton, loginView, pendingView, skeleton, dashboardView, listView, programaView, programList, programItems, occupancyView, personView, roomView, facts } from './views.js?v=1.1.0';
 
 const VERSION = '1.1.0';
 const app = document.querySelector('#app');
@@ -10,7 +10,7 @@ const dialog = document.querySelector('#dialog');
 const announcer = document.querySelector('#announcer');
 
 // Todo el estado privado vive solo en memoria: nada se guarda en el navegador.
-const blank = () => ({ token: '', expiresAt: 0, events: [], eventId: '', query: {}, context: null, data: null, summary: null, overview: null, detail: null, activity: null, room: null, night: '', roomFilter: 'all', message: '', loading: false, refreshing: false, exporting: false, navs: 0, gsearch: { q: '', items: [], open: false, loading: false, index: -1 }, activityQuery: { group: 'entitled', page: 0, limit: 25, search: '' } });
+const blank = () => ({ token: '', expiresAt: 0, events: [], eventId: '', query: {}, context: null, data: null, summary: null, overview: null, detail: null, actPane: null, selActivity: '', room: null, night: '', roomFilter: 'all', message: '', loading: false, refreshing: false, exporting: false, navs: 0, gsearch: { q: '', items: [], open: false, loading: false, index: -1 }, activityQuery: { group: 'entitled', search: '' } });
 const state = { route: 'resumen', tab: 'personas', resource: 'personas', view: 'list', currentQuery: null, ...blank() };
 let lastActivity = Date.now();
 let revision = 0;
@@ -106,7 +106,7 @@ function shell() {
 <div class="workspace"><header class="topbar"><div class="event-meta">${state.events.length ? `<label class="sr-only" for="event-selector">Edición</label><select id="event-selector">${state.events.map((event) => `<option value="${esc(event._id)}" ${state.eventId === event._id ? 'selected' : ''}>${esc(event.title || event.eventKey)}</option>`).join('')}</select>` : '<strong>Baztango · Organización</strong>'}<span class="badge ${logged ? 'green' : 'blue'}">${logged ? 'Acceso de consulta' : 'Solo consulta'}</span></div>
 <div class="gsearch" role="search"><label class="sr-only" for="global-search">Buscar persona</label>${icon('search')}<input id="global-search" type="search" maxlength="100" autocomplete="off" placeholder="Buscar persona…  ( / )" role="combobox" aria-expanded="false" aria-controls="gsearch-results" aria-autocomplete="list" value="${esc(state.gsearch.q)}" ${logged && state.context?.version ? '' : 'disabled'}><div id="gsearch-results" class="gsearch-results" role="listbox" aria-label="Resultados de personas" hidden></div></div>
 <div class="copy-meta">${copyMeta()}${logged ? `<span class="session-chip" id="session-chip">${sessionText()}</span>` : ''}</div><div class="top-actions">${button('refresh', `${icon('refresh')}<span class="btn-label">Volver a consultar</span>`, `aria-label="Volver a consultar" ${state.token && state.eventId ? '' : 'disabled'}`, 'ghost')}</div></header>
-<main id="main" tabindex="-1"><div class="page-heading"><div><div class="eyebrow">${esc(heading[0])}</div><h1>${esc(heading[1])}</h1><p>${esc(heading[2])}</p></div><span class="badge">Solo consulta</span></div>${state.message ? `<div role="alert" class="notice">${esc(state.message)}</div>` : ''}<div class="content">${content()}</div><footer><span>Baztango · Consulta del evento · <span>Versión ${VERSION}</span></span><span>Consultar Wix no inicia la carga desde el gestor.</span></footer></main></div>
+<main id="main" tabindex="-1" class="route-${state.route}"><div class="page-heading"><div><div class="eyebrow">${esc(heading[0])}</div><h1>${esc(heading[1])}</h1><p>${esc(heading[2])}</p></div><span class="badge">Solo consulta</span></div>${state.message ? `<div role="alert" class="notice">${esc(state.message)}</div>` : ''}<div class="content">${content()}</div><footer><span>Baztango · Consulta del evento · <span>Versión ${VERSION}</span></span><span>Consultar Wix no inicia la carga desde el gestor.</span></footer></main></div>
 <nav class="bottom-nav" aria-label="Navegación móvil">${mobileRoutes.map((route) => navButton(state, route, true)).join('')}${button('more', `${icon('more')}<span>Más</span>`, 'aria-label="Más apartados"', 'bottom-link')}</nav>`;
 }
 function content() {
@@ -114,10 +114,9 @@ function content() {
   if (state.loading) return `<div class="busy">${skeleton()}</div>`;
   if (!state.context?.version) return '<section class="panel empty"><h2>Sin datos publicados</h2><p>Esta edición todavía no tiene una copia completa para consultar.</p></section>';
   if (state.detail) return personView(state);
-  if (state.activity) return activityView(state);
   if (state.room) return roomView(state);
   if (state.route === 'resumen') return dashboardView(state);
-  if (state.view === 'agenda') return agendaView(state);
+  if (state.view === 'programa') return programaView(state);
   if (state.view === 'ocupacion') return occupancyView(state);
   return listView(state, query());
 }
@@ -167,7 +166,7 @@ async function loadContext(eventId) {
   revision++;
   if (state.eventId !== eventId) state.query = {};
   state.eventId = eventId;
-  Object.assign(state, { context: null, data: null, summary: null, overview: null, detail: null, activity: null, room: null, night: '', loading: true });
+  Object.assign(state, { context: null, data: null, summary: null, overview: null, detail: null, actPane: null, selActivity: '', room: null, night: '', loading: true });
   render();
   try {
     state.context = await api({ action: 'context', eventId });
@@ -184,12 +183,19 @@ async function load({ soft = false } = {}) {
     if (state.route === 'resumen') {
       await ensureOverview();
       if (!state.overview) { const [summary, data] = await Promise.all([api({ action: 'summary', ...scope() }), api({ action: 'list', ...scope(), resource: 'actividades', page: 0, limit: 5 })]); state.summary = summary; state.data = data; }
-    } else if (state.view === 'agenda' || state.view === 'ocupacion') {
+    } else if (state.view === 'programa') {
       await ensureOverview();
-      if (!state.overview) state.data = await api({ action: 'list', ...scope(), resource: state.resource, search: '', filters: {}, page: 0, limit: 100, order: 'default' });
+      if (!state.overview) state.data = await loadAll({ action: 'list', ...scope(), resource: 'actividades', search: '', filters: {}, order: 'default' });
+      if (!programList(state, state.tab).length && !state.tabPinned) { const first = programTypesWithItems(); if (first) state.tab = first; }
+      const list = programList(state, state.tab);
+      if (!list.some((activity) => activity._id === state.selActivity)) state.selActivity = list[0]?._id || '';
+      await loadActivityPane();
+    } else if (state.view === 'ocupacion') {
+      await ensureOverview();
+      if (!state.overview) state.data = await loadAll({ action: 'list', ...scope(), resource: state.resource, search: '', filters: {}, order: 'default' });
     } else {
       const cur = query();
-      const [data] = await Promise.all([api({ action: 'list', ...scope(), resource: state.resource, ...cur }), state.route === 'pagos' && state.resource === 'personas' ? ensureOverview().then((overview) => (overview ? null : ensureSummary())) : null]);
+      const [data] = await Promise.all([loadAll({ action: 'list', ...scope(), resource: state.resource, search: cur.search, filters: cur.filters, order: cur.order }), state.route === 'pagos' && state.resource === 'personas' ? ensureOverview().then((overview) => (overview ? null : ensureSummary())) : null]);
       if (revision !== current) return;
       state.data = data;
       announcer.textContent = `${data.total} resultados`;
@@ -198,14 +204,35 @@ async function load({ soft = false } = {}) {
     state.loading = false; state.refreshing = false; render();
   } catch (error) { if (revision === current) onError(error); }
 }
+// Carga completa en una sola lista: pide páginas de 100 (4 en paralelo) y las junta, sin paginación visible.
+async function loadAll(body, key = 'items') {
+  const first = await api({ ...body, page: 0, limit: 100 });
+  const items = [...first[key]];
+  const pages = Math.min(Math.ceil(first.total / 100), 60);
+  for (let page = 1; page < pages; page += 4) {
+    const batch = await Promise.all(Array.from({ length: Math.min(4, pages - page) }, (_, offset) => api({ ...body, page: page + offset, limit: 100 })));
+    for (const result of batch) items.push(...result[key]);
+  }
+  return { ...first, items, page: 0, limit: items.length };
+}
+function programTypesWithItems() { return ['clases', 'comidas', 'actividades', 'milongas', 'llegada'].find((key) => programList(state, key).length); }
 async function loadPerson(id) {
   state.loading = true; render();
   state.detail = await api({ action: 'detail', ...scope(), personId: id });
   state.loading = false; render();
 }
-async function loadActivity() {
-  const activityId = state.activity?.activity?._id || state.pendingActivity;
-  state.activity = await api({ action: 'activityDetail', ...scope(), activityId, ...state.activityQuery });
+async function loadActivityPane() {
+  const id = state.selActivity;
+  if (!id) { state.actPane = null; return; }
+  const q = state.activityQuery;
+  const data = await loadAll({ action: 'activityDetail', ...scope(), activityId: id, group: q.group, search: q.search });
+  data.items.sort((x, y) => String(x.person.lastName || x.person.fullName || '').localeCompare(String(y.person.lastName || y.person.fullName || ''), 'es') || String(x.person.firstName || '').localeCompare(String(y.person.firstName || ''), 'es'));
+  state.actPane = data;
+}
+async function refreshPane() {
+  revision++;
+  state.refreshing = true; render();
+  try { await loadActivityPane(); state.refreshing = false; render(); } catch (error) { onError(error); }
 }
 async function loadRoom(roomId, night) {
   state.room = await api({ action: 'roomDetail', ...scope(), roomId, night });
@@ -219,15 +246,15 @@ async function route() {
   const [first, second, third] = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map((part) => { try { return decodeURIComponent(part); } catch { return ''; } });
   revision++;
   dialog.close();
-  Object.assign(state, { detail: null, activity: null, room: null });
+  Object.assign(state, { detail: null, room: null });
   try {
     if (first === 'persona' && second) await loadPerson(second);
-    else if (first === 'actividad' && second) { state.activityQuery = { group: 'entitled', page: 0, limit: 25, search: '' }; state.loading = true; render(); state.pendingActivity = second; await loadActivity(); state.loading = false; render(); }
     else if (first === 'habitacion' && second) { state.loading = true; render(); await loadRoom(second, /^\d{4}-\d{2}-\d{2}$/.test(third || '') ? third : state.night || state.context.event.startDate); state.loading = false; render(); }
     else {
       const name = sections[first] ? first : 'resumen';
       const tab = tabs[name]?.find((item) => item.key === second) || tabs[name]?.[0];
-      Object.assign(state, { route: name, tab: tab?.key || '', resource: tab?.resource || 'personas', view: tab?.view || 'list' });
+      Object.assign(state, { route: name, tab: tab?.key || '', tabPinned: Boolean(second), resource: tab?.resource || 'personas', view: tab?.view || 'list' });
+      if (tab?.view === 'programa') { state.selActivity = third || ''; state.activityQuery = { group: 'entitled', search: '' }; }
       await load();
     }
   } catch (error) { onError(error); return; }
@@ -237,7 +264,7 @@ async function route() {
 
 async function openRecord(resource, id) {
   if (resource === 'personas') return go(`#/persona/${encodeURIComponent(id)}`);
-  if (resource === 'actividades') return go(`#/actividad/${encodeURIComponent(id)}`);
+  if (resource === 'actividades') { const found = programItems(state).find((item) => item._id === id); return go(`#/programa/${typeKeyFor(found?.category)}/${encodeURIComponent(id)}`); }
   if (resource === 'habitaciones') return go(`#/habitacion/${encodeURIComponent(id)}${state.night ? `/${state.night}` : ''}`);
   if (resource === 'solicitudes') { revision++; const data = await api({ action: 'requestDetail', ...scope(), requestId: id }); openDialog('Solicitud de consulta', facts(data.request)); return; }
   const row = state.data?.items?.find((item) => item._id === id);
@@ -246,11 +273,6 @@ async function openRecord(resource, id) {
 }
 function openDialog(title, body) { dialog.innerHTML = `<div class="dialog-head"><h2 id="dialog-title">${esc(title)}</h2>${button('close-dialog', 'Cerrar', 'aria-label="Cerrar diálogo"')}</div>${body}`; dialog.showModal(); }
 
-async function changeActivity() {
-  revision++;
-  state.refreshing = true; render();
-  try { await loadActivity(); state.refreshing = false; render(); } catch (error) { onError(error); }
-}
 function applyListForm(form) {
   const data = new FormData(form);
   const current = query();
@@ -276,34 +298,14 @@ function download(name, header, rows) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 async function exportList() {
-  const resource = state.resource; const cur = query();
+  const resource = state.resource;
   const fields = exportColumns[resource] || resources[resource][1];
-  const rows = [];
-  state.exporting = true; render();
-  try {
-    for (let page = 0; page < 60; page++) {
-      const data = await api({ action: 'list', ...scope(), resource, search: cur.search, filters: cur.filters, page, limit: 100, order: cur.order });
-      rows.push(...data.items);
-      if (!data.items.length || rows.length >= data.total) break;
-    }
-    state.exporting = false; render();
-    download(`baztango-${resource}`, fields.map((field) => labels[field] || field), rows.map((row) => fields.map((field) => csvValue(field, row[field]))));
-  } catch (error) { onError(error); }
+  download(`baztango-${resource}`, fields.map((field) => labels[field] || field), state.data.items.map((row) => fields.map((field) => csvValue(field, row[field]))));
 }
 async function exportActivity() {
   const fields = ['entitlement', 'attendanceState', 'validRecordCount', 'needsReview'];
-  const meal = state.activity.activity.category === 'meal';
-  const rows = [];
-  state.exporting = true; render();
-  try {
-    for (let page = 0; page < 60; page++) {
-      const data = await api({ action: 'activityDetail', ...scope(), activityId: state.activity.activity._id, group: state.activityQuery.group, search: state.activityQuery.search, page, limit: 100 });
-      rows.push(...data.items);
-      if (!data.items.length || rows.length >= data.total) break;
-    }
-    state.exporting = false; render();
-    download('baztango-actividad', ['Persona', 'ID individual', ...fields.map((field) => labels[field] || field), ...(meal ? ['Información alimentaria conocida', 'Necesidad alimentaria'] : [])], rows.map((row) => [row.person.fullName, row.person.personCode, ...fields.map((field) => csvValue(field, row[field])), ...(meal ? [csvValue('dietaryKnown', row.person.dietaryKnown), row.person.dietaryNotes || ''] : [])]));
-  } catch (error) { onError(error); }
+  const meal = state.actPane.activity.category === 'meal';
+  download('baztango-actividad', ['Persona', 'ID individual', ...fields.map((field) => labels[field] || field), ...(meal ? ['Información alimentaria conocida', 'Necesidad alimentaria'] : [])], state.actPane.items.map((row) => [row.person.fullName, row.person.personCode, ...fields.map((field) => csvValue(field, row[field])), ...(meal ? [csvValue('dietaryKnown', row.person.dietaryKnown), row.person.dietaryNotes || ''] : [])]));
 }
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
@@ -317,8 +319,6 @@ async function handleAction(target) {
   if (action === 'refresh') { state.overview = null; state.summary = null; return loadContext(state.eventId); }
   if (action === 'tab') return go(hashFor(state.route, target.dataset.tab));
   if (action === 'clear') { state.query[qkey()] = defaultQuery(state.route, state.resource); return load({ soft: true }); }
-  if (action === 'page') { query().page += Number(target.dataset.step); return load({ soft: true }); }
-  if (action === 'size') { const cur = query(); cur.limit = cur.limit === 25 ? 50 : cur.limit === 50 ? 100 : 25; cur.page = 0; return load({ soft: true }); }
   if (action === 'chip') {
     const chip = quickChips.personas.find((item) => item.id === target.dataset.chip);
     const cur = query(); const active = target.getAttribute('aria-pressed') === 'true';
@@ -332,8 +332,8 @@ async function handleAction(target) {
   if (action === 'print') return window.print();
   if (action === 'export') return exportList();
   if (action === 'export-activity') return exportActivity();
-  if (action === 'activity-group') { state.activityQuery.group = target.dataset.group; state.activityQuery.page = 0; return changeActivity(); }
-  if (action === 'activity-page') { state.activityQuery.page += Number(target.dataset.step); return changeActivity(); }
+  if (action === 'activity-group') { state.activityQuery.group = target.dataset.group; return refreshPane(); }
+  if (action === 'pick-activity') { state.selActivity = target.dataset.id; state.activityQuery = { group: 'entitled', search: '' }; history.replaceState(null, '', `#/programa/${state.tab}/${encodeURIComponent(state.selActivity)}`); return refreshPane(); }
   if (action === 'room-filter') { state.roomFilter = target.dataset.filter; return render(); }
   if (action === 'night') { state.night = target.dataset.night; if (state.route === 'alojamiento' && state.view === 'ocupacion' && !state.room) return render(); return go('#/alojamiento'); }
   if (action === 'room-night') {
@@ -377,7 +377,7 @@ document.addEventListener('submit', async (event) => {
       state.token = result.token; state.expiresAt = result.expiresAt; state.events = result.events; lastActivity = Date.now();
       if (state.events.length) await loadContext(state.events[0]._id); else { state.loading = false; render(); }
     } else if (form.id === 'search-form') { clearTimeout(timers.list); await applyListForm(form); }
-    else if (form.id === 'activity-search') { clearTimeout(timers.activity); state.activityQuery.search = String(data.get('search') || ''); state.activityQuery.page = 0; await changeActivity(); }
+    else if (form.id === 'activity-search') { clearTimeout(timers.activity); state.activityQuery.search = String(data.get('search') || ''); await refreshPane(); }
     else if (form.id === 'night-form') { const roomId = state.room.room._id; const night = String(data.get('night')); revision++; state.refreshing = true; render(); await loadRoom(roomId, night); history.replaceState(null, '', `#/habitacion/${encodeURIComponent(roomId)}/${night}`); state.refreshing = false; render(); }
   } catch (error) { onError(error); }
 });
@@ -390,9 +390,9 @@ document.addEventListener('input', (event) => {
     Object.assign(state.gsearch, { open: true, loading: true, index: -1 }); paintSearch();
     debounce('global', 300, runGlobalSearch);
   } else if (id === 'list-search') {
-    debounce('list', 450, () => { const cur = query(); cur.search = event.target.value; cur.page = 0; load({ soft: true }); });
+    debounce('list', 450, () => { const cur = query(); cur.search = event.target.value; load({ soft: true }); });
   } else if (id === 'activity-search-input') {
-    debounce('activity', 450, () => { state.activityQuery.search = event.target.value; state.activityQuery.page = 0; changeActivity(); });
+    debounce('activity', 450, () => { state.activityQuery.search = event.target.value; refreshPane(); });
   }
 });
 document.addEventListener('change', (event) => {

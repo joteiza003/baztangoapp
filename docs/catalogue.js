@@ -2,7 +2,7 @@ export const sections = {
   resumen: ['Resumen', 'El evento, a un vistazo', 'Cifras clave, cobros, programa y alojamiento de la edición seleccionada.'],
   clientes: ['Clientes', 'Cada persona, su contexto', 'Encuentra una persona, filtra por situación o consulta las solicitudes.'],
   pagos: ['Pagos', 'Una lectura clara de los saldos', 'Quién debe, quién ha pagado y cómo se ha imputado cada movimiento.'],
-  programa: ['Programa', 'El programa y sus participantes', 'Agenda por jornada con derechos y asistencia registrada.'],
+  programa: ['Programa', 'Listas por actividad', 'Clases, comidas, actividades y milongas con su lista completa de participantes.'],
   alojamiento: ['Alojamiento', 'Personas, habitaciones y noches', 'Ocupación por noche, unidades reales y estancias publicadas.'],
   caja: ['Caja', 'La jornada, en detalle', 'Sesiones, movimientos de caja y obligaciones de gastos.']
 };
@@ -20,10 +20,36 @@ export const resources = {
   movimientos: ['Movimientos de caja', ['concept', 'businessDate', 'kind', 'method', 'amountCents'], ['state', 'businessDate', 'kind', 'method', 'cashSessionRef', 'expenseRef']],
   gastos: ['Gastos', ['concept', 'supplier', 'totalCents', 'paidCents', 'pendingCents'], ['state', 'category']]
 };
+// Misma agrupación que Listas en Baztango Manager Pro: Clases, Comidas y cenas, Actividades, Milongas.
+export const programTypes = [
+  { key: 'clases', label: 'Clases', categories: ['class'] },
+  { key: 'comidas', label: 'Comidas y cenas', categories: ['meal'] },
+  { key: 'actividades', label: 'Actividades', categories: ['social', 'other'] },
+  { key: 'milongas', label: 'Milongas', categories: ['milonga'] },
+  { key: 'llegada', label: 'Llegada', categories: ['arrival'] }
+];
+export const typeKeyFor = (category) => (programTypes.find((type) => type.categories.includes(category)) || programTypes[2]).key;
+// Paleta semántica por paquete (la misma del gestor).
+export function packKey(name) {
+  const upper = String(name || '').trim().toUpperCase();
+  if (!upper) return '';
+  if (upper === 'PURO' || upper.startsWith('ESTADO PURO')) return 'estado';
+  if (upper.startsWith('P.') || upper.startsWith('A.')) return 'serie';
+  if (upper.startsWith('CANARO+')) return 'canaroplus';
+  if (upper.startsWith('CANARO')) return 'canaro';
+  if (upper.startsWith("D'ARIENZO") || upper.startsWith('DARIENZO')) return 'darienzo';
+  if (upper.startsWith('PUGLIESE')) return 'pugliese';
+  if (upper.startsWith('TROILO')) return 'troilo';
+  if (upper.startsWith('DI SARLI')) return 'disarli';
+  if (upper.startsWith('ULTIMO ABRAZO') || upper.startsWith('ÚLTIMO ABRAZO')) return 'abrazo';
+  if (upper.startsWith('APARTAMENTO') || upper.startsWith('EQUIPO')) return 'equipo';
+  if (upper.startsWith('INVITAD')) return 'invitados';
+  return '';
+}
 export const tabs = {
   clientes: [{key:'personas',label:'Personas',resource:'personas'},{key:'solicitudes',label:'Solicitudes',resource:'solicitudes'},{key:'reservas',label:'Reservas',resource:'reservas'}],
   pagos: [{key:'saldos',label:'Saldos por persona',resource:'personas'},{key:'movimientos',label:'Movimientos',resource:'pagos'},{key:'imputaciones',label:'Imputaciones',resource:'imputaciones'}],
-  programa: [{key:'agenda',label:'Agenda',resource:'actividades',view:'agenda'},{key:'participaciones',label:'Participaciones',resource:'participaciones'}],
+  programa: programTypes.map((type) => ({ key: type.key, label: type.label, resource: 'actividades', view: 'programa' })),
   alojamiento: [{key:'ocupacion',label:'Ocupación',resource:'habitaciones',view:'ocupacion'},{key:'habitaciones',label:'Habitaciones',resource:'habitaciones'},{key:'estancias',label:'Estancias',resource:'estancias'}],
   caja: [{key:'sesiones',label:'Sesiones',resource:'cajas'},{key:'movimientos',label:'Movimientos de caja',resource:'movimientos'},{key:'gastos',label:'Gastos',resource:'gastos'}]
 };
