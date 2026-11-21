@@ -24,8 +24,8 @@ test('the entry point is versioned and legacy quota errors cannot show the obsol
   await installApi(page);
   await page.route('https://qa.example.invalid/_functions/baztango', (route) => route.fulfill({ status: 503, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:4187', 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'RATE_LIMIT' }) }));
   await page.goto('/');
-  await expect(page.locator('script[type="module"]')).toHaveAttribute('src', './app.js?v=1.0.3');
-  await expect(page.getByText('Versión 1.0.3', { exact: true })).toBeVisible();
+  await expect(page.locator('script[type="module"]')).toHaveAttribute('src', './app.js?v=1.1.0');
+  await expect(page.getByText('Versión 1.1.0', { exact: true })).toBeVisible();
   await page.getByLabel('Contraseña de acceso').fill(fixturePassword);
   await page.getByRole('button', { name: 'Acceder', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('pausa temporal');

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { createHmac, randomUUID, createHash } from 'node:crypto';
 import { createSyncService, canonicalJSON, hashRows } from '../wix/sync-service.js';
 import { createSyncRepository, SYNC_COLLECTIONS } from '../wix/sync-repository.js';
-import { encodeRows } from '../wix/snapshot-codec.js';
+import { encodeRows, decodeRows } from '../wix/snapshot-codec.js';
+import { gzipSync } from 'node:zlib';
 
 const instant = Date.parse('2026-11-17T12:00:00.000Z');
 const adminSecret = 'synthetic-admin-export-secret';
@@ -375,4 +376,11 @@ test('cleanup only discards old failed copies created by this integration', asyn
   assert.equal(f.db.tables.BTVersiones[f.versionId], undefined);
   assert.ok(f.db.tables.BTVersiones[unrelated]); assert.ok(f.db.tables.BTVersiones[ready]);
   assert.equal(f.db.tables.BTEventos[f.eventId].currentVersionRef, ready);
+});
+
+test('compressed data is bounded before parsing and supports large valid base64 bodies', () => {
+  const data = gzipSync(Buffer.alloc(16000001, 32)).toString('base64');
+  assert.throws(() => decodeRows(data));
+  const rows = Array.from({ length: 5000 }, (_, i) => ({ _id: randomUUID(), value: randomUUID(), index: i }));
+  assert.deepEqual(decodeRows(encodeRows(rows)), rows);
 });

@@ -14,6 +14,17 @@ export async function installApi(page) {
     events:async()=>[event],
     context:async()=>({event,version:{_id:'v1',capturedAt:'2026-11-17T00:00:00Z'}}),
     summary:async()=>({accepted:1,arrived:1,pendingCents:10000,issues:0,requests:1,housed:1}),
+    overview:async()=>{
+      return {
+        totals:{people:3,accepted:2,cancelled:1,review:0,arrived:1,housed:1,team:0,guests:0},
+        finance:{dueCents:30000,paidNetCents:20000,pendingCents:10000,refundPendingCents:0,overpaidCents:0,withDebt:1,withRefund:0},
+        byPaymentState:[{value:'partial',count:1},{value:'settled',count:1}],byRole:[{value:'leader',count:1},{value:'follower',count:1}],byPackage:[{value:'Completo',count:2}],byCountry:[{value:'ES',count:2}],
+        arrivalsByDate:[{value:'2026-11-26',count:1}],debtors:[{_id:'p1',fullName:person.fullName,personCode:person.personCode,packageName:'Completo',pendingCents:10000,paymentState:'partial'}],
+        program:[{...activity,startsAt:null,entitled:2,registered:1,missing:1,issues:0}],
+        lodging:{nights:[{date:'2026-11-26',assigned:1,capacity:5},{date:'2026-11-27',assigned:1,capacity:5},{date:'2026-11-28',assigned:0,capacity:5}],rooms:[{...room,occupancy:[1,1,0]}],unknownDates:0,overCapacityRooms:0},
+        attention:{issues:0,requests:1,waiting:1,withRefund:0,activitiesWithIssues:0,sessionsWithDifference:0}
+      };
+    },
     list:async(query)=>{
       queries.push(query);
       const items = records[query.resource].filter((row)=>Object.entries(query.filters).every(([field,value])=>row[field]===value) && (!query.search || normalize([row.fullName,row.name,row.concept,row.paymentCode].filter(Boolean).join(' ')).includes(query.search)));

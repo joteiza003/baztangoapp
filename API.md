@@ -7,6 +7,7 @@ Un endpoint de producción: `POST https://TU-SITIO/_functions/baztango`, JSON, T
 | login | password | token, expiresAt (Unix ms), events |
 | context | eventId | event, version |
 | summary | eventId, versionId | accepted, arrived, housed, dueCents, paidNetCents, pendingCents, refundPendingCents, issues, requests |
+| overview | eventId, versionId | totals, finance, byPaymentState, byRole, byPackage, byCountry, arrivalsByDate, debtors, program (derechos/asistencia por actividad), lodging (noches y unidades), attention. Solo agregados; opcional: sin él el panel se muestra simplificado |
 | list | resource, search, filters, page, limit, order | items, total, page, limit |
 | detail | personId | person, reservation, people, payments, allocations, participations, activities, stays, rooms |
 | requestDetail | requestId | request (con contacto) |

@@ -134,3 +134,38 @@ test('compact storage preserves list filters, details and summary without exposi
   data.tables.BTPersonas[0].payloadHash = '0'.repeat(64);
   await assert.rejects(repo.summary('e1', 'v1'), { code: 'INVALID_REFERENCE' });
 });
+
+test('overview aggregates people, program and lodging nights without private fields', async () => {
+  const people = [
+    { _id: 'p1', ...scope, state: 'accepted', fullName: 'A Uno', paymentState: 'partial', danceRole: 'leader', packageName: 'Completo', country: 'ES', dueCents: 1000, paidNetCents: 400, pendingCents: 600, refundPendingCents: 0, overpaidCents: 0, arrivalState: 'registered', arrivalDate: '2026-11-26', email: 'privado@example.invalid' },
+    { _id: 'p2', ...scope, state: 'accepted', fullName: 'B Dos', paymentState: 'settled', danceRole: 'follower', dueCents: 500, paidNetCents: 500, pendingCents: 0, refundPendingCents: 0, overpaidCents: 0, arrivalState: 'notRegistered' },
+    { _id: 'p3', ...scope, state: 'cancelled', pendingCents: 0, dueCents: 0, paidNetCents: 0, refundPendingCents: 50, overpaidCents: 0 }
+  ];
+  const data = database({
+    BTPersonas: people,
+    BTActividades: [{ _id: 'a1', ...scope, name: 'Milonga', category: 'milonga', eventDate: '2026-11-26', sortOrder: 1 }],
+    BTParticipaciones: [
+      { _id: 'q1', ...scope, personRef: 'p1', activityRef: 'a1', eligible: true, entitlement: 'included', attendanceState: 'registered' },
+      { _id: 'q2', ...scope, personRef: 'p2', activityRef: 'a1', eligible: true, entitlement: 'included', attendanceState: 'notRegistered' },
+      { _id: 'q3', ...scope, personRef: 'p3', activityRef: 'a1', eligible: false, entitlement: 'none', attendanceState: 'registered' }
+    ],
+    BTHabitaciones: [{ _id: 'h1', ...scope, unitCode: 'APT-1', capacity: 2, isAvailable: true }],
+    BTEstancias: [
+      { _id: 's1', ...scope, personRef: 'p1', roomRef: 'h1', state: 'reserved', checkInDate: '2026-11-26', checkOutDate: '2026-11-28' },
+      { _id: 's2', ...scope, personRef: 'p2', roomRef: 'h1', state: 'reserved', checkInDate: '2026-11-27', checkOutDate: '2026-11-28' }
+    ],
+    BTCajas: [{ _id: 'c1', ...scope, cashDifferenceCents: -200 }],
+    BTSolicitudes: [{ _id: 'r1', ...scope, state: 'waiting' }, { _id: 'r2', ...scope, state: 'promoted' }]
+  });
+  data.tables.BTEventos[0].startDate = '2026-11-26'; data.tables.BTEventos[0].endDate = '2026-11-29';
+  const result = await createRepository(data).overview('e1', 'v1');
+  assert.equal(result.totals.accepted, 2); assert.equal(result.totals.arrived, 1); assert.equal(result.totals.housed, 2);
+  assert.equal(result.finance.pendingCents, 600); assert.equal(result.finance.dueCents, 1500); assert.equal(result.finance.withDebt, 1);
+  assert.deepEqual(result.byPaymentState.map((row) => row.value).sort(), ['partial', 'settled']);
+  assert.deepEqual(result.debtors.map((row) => row._id), ['p1']);
+  assert.deepEqual({ entitled: result.program[0].entitled, registered: result.program[0].registered, missing: result.program[0].missing, issues: result.program[0].issues }, { entitled: 2, registered: 2, missing: 1, issues: 1 });
+  assert.deepEqual(result.lodging.nights.map((night) => [night.date, night.assigned]), [['2026-11-26', 1], ['2026-11-27', 2], ['2026-11-28', 0], ['2026-11-29', 0]]);
+  assert.equal(result.lodging.rooms[0].occupancy[1], 2); assert.equal(result.lodging.nights[0].capacity, 2);
+  assert.equal(result.attention.requests, 1); assert.equal(result.attention.waiting, 1); assert.equal(result.attention.sessionsWithDifference, 1);
+  assert.equal(JSON.stringify(result).includes('privado@example.invalid'), false);
+});

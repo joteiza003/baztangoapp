@@ -125,6 +125,111 @@ export function createRepository(data, collectionIds = {}) {
     await context(eventId, versionId);
     return { accepted: accepted.length, arrived: accepted.filter((person) => person.arrivalState === 'registered').length, pendingCents, dueCents: sumKnown('dueCents'), paidNetCents: sumKnown('paidNetCents'), refundPendingCents: sumKnown('refundPendingCents'), housed, issues: people.filter((person) => person.hasDataIssues).length, requests };
   }
+  async function readAll(resource, eventId, versionId, max) {
+    const rows = [];
+    let total = 0;
+    do {
+      const result = await base(resource, eventId, versionId).ascending('_id').skip(rows.length).limit(1000).find(options);
+      total = result.totalCount;
+      if (total > max) fail(422, 'SUMMARY_LIMIT');
+      if (!result.items.length && rows.length < total) fail(409, 'VERSION_EXPIRED');
+      rows.push(...result.items);
+    } while (rows.length < total);
+    return rows;
+  }
+  const countBy = (rows, key, label = (value) => value) => {
+    const counts = new Map();
+    for (const row of rows) { const value = label(key(row)); counts.set(value, (counts.get(value) || 0) + 1); }
+    return [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value)));
+  };
+  const isoDay = (value) => (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null);
+  const addDays = (day, amount) => new Date(Date.parse(`${day}T00:00:00Z`) + amount * 86400000).toISOString().slice(0, 10);
+  // Vista agregada de solo lectura para el panel de control. No añade datos privados: solo recuentos, importes ya proyectados y referencias.
+  async function overview(eventId, versionId) {
+    const { event } = await context(eventId, versionId);
+    const [people, stays, rooms, activities, participations, cashSessions] = await Promise.all([
+      readAll('personas', eventId, versionId, 10000), readAll('estancias', eventId, versionId, 10000), readAll('habitaciones', eventId, versionId, 2000),
+      readAll('actividades', eventId, versionId, 500), readAll('participaciones', eventId, versionId, 60000), readAll('cajas', eventId, versionId, 1000)
+    ]);
+    const requests = await base('solicitudes', eventId, versionId).ne('state', 'promoted').count(options);
+    const waiting = await base('solicitudes', eventId, versionId).eq('state', 'waiting').count(options);
+    const accepted = people.filter((person) => person.state === 'accepted');
+    const acceptedIds = new Set(accepted.map((person) => person._id));
+    const sumKnown = (field) => {
+      let total = 0;
+      for (const person of people) {
+        if (!Number.isSafeInteger(person[field]) || !Number.isSafeInteger(total + person[field])) return null;
+        total += person[field];
+      }
+      return total;
+    };
+    let pendingCents = 0;
+    for (const person of people) {
+      if (!Number.isSafeInteger(person.pendingCents) || person.pendingCents < 0 || !Number.isSafeInteger(pendingCents + person.pendingCents)) { pendingCents = null; break; }
+      pendingCents += person.pendingCents;
+    }
+    const reservedStays = stays.filter((stay) => stay.state === 'reserved' && acceptedIds.has(refId(stay.personRef)));
+    const arrived = accepted.filter((person) => person.arrivalState === 'registered');
+    const unknown = (value) => value || 'unknown';
+    // Programa: derechos y asistencia por actividad, contando personas únicas.
+    const byActivity = new Map(activities.map((activity) => [activity._id, { entitled: new Set(), registered: new Set(), issues: new Set() }]));
+    const peopleById = new Map(people.map((person) => [person._id, person]));
+    for (const row of participations) {
+      const bucket = byActivity.get(refId(row.activityRef));
+      const personId = refId(row.personRef);
+      const person = peopleById.get(personId);
+      if (!bucket || !person) continue;
+      const entitled = person.state === 'accepted' && row.eligible === true && ['included', 'extra'].includes(row.entitlement);
+      const registered = row.attendanceState === 'registered';
+      if (entitled) bucket.entitled.add(personId);
+      if (registered) bucket.registered.add(personId);
+      if (row.needsReview === true || (registered && !entitled)) bucket.issues.add(personId);
+    }
+    const program = activities.map((activity) => {
+      const bucket = byActivity.get(activity._id);
+      const missing = [...bucket.entitled].filter((id) => !bucket.registered.has(id)).length;
+      return { ...pick(activity, '_id name category eventDate startsAt endsAt timeConfirmed venue capacity sortOrder isGeneralArrival'), entitled: bucket.entitled.size, registered: bucket.registered.size, missing, issues: bucket.issues.size };
+    }).sort((a, b) => String(a.eventDate || '').localeCompare(String(b.eventDate || '')) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.name || '').localeCompare(String(b.name || '')));
+    // Alojamiento: ocupación por noche y unidad con el mismo criterio que roomDetail (estancias no anuladas, salida excluida).
+    const live = stays.filter((stay) => stay.state !== 'cancelled');
+    const dated = live.filter((stay) => isoDay(stay.checkInDate) && isoDay(stay.checkOutDate) && stay.checkInDate < stay.checkOutDate);
+    const unknownDates = live.length - dated.length;
+    let first = isoDay(event.startDate); let last = isoDay(event.endDate);
+    for (const stay of dated) { const start = stay.checkInDate.slice(0, 10); const end = addDays(stay.checkOutDate.slice(0, 10), -1); if (!first || start < first) first = start; if (!last || end > last) last = end; }
+    const nights = [];
+    if (first && last) for (let day = first; day <= last && nights.length < 45; day = addDays(day, 1)) nights.push(day);
+    const roomIndex = new Map(rooms.map((room, index) => [room._id, index]));
+    const grid = rooms.map(() => nights.map(() => 0));
+    for (const stay of dated) {
+      const row = grid[roomIndex.get(refId(stay.roomRef))];
+      if (!row) continue;
+      nights.forEach((night, index) => { if (stay.checkInDate.slice(0, 10) <= night && night < stay.checkOutDate.slice(0, 10)) row[index] += 1; });
+    }
+    const available = rooms.filter((room) => room.isAvailable === true && Number.isSafeInteger(room.capacity) && room.capacity > 0);
+    const totalCapacity = available.reduce((sum, room) => sum + room.capacity, 0);
+    const lodging = {
+      nights: nights.map((night, index) => ({ date: night, assigned: grid.reduce((sum, row) => sum + row[index], 0), capacity: totalCapacity })),
+      rooms: rooms.map((room, index) => ({ ...pick(room, '_id unitCode hotelRoomNumber roomType capacity isAvailable area'), occupancy: grid[index] })).sort((a, b) => String(a.hotelRoomNumber || a.unitCode || '').localeCompare(String(b.hotelRoomNumber || b.unitCode || ''), 'es', { numeric: true })),
+      unknownDates,
+      overCapacityRooms: rooms.filter((room, index) => Number.isSafeInteger(room.capacity) && grid[index].some((count) => count > room.capacity)).length
+    };
+    const arrivalsByDate = countBy(arrived.filter((person) => isoDay(person.arrivalDate)), (person) => isoDay(person.arrivalDate)).sort((a, b) => a.value.localeCompare(b.value)).slice(0, 31);
+    const debtors = accepted.filter((person) => Number.isSafeInteger(person.pendingCents) && person.pendingCents > 0)
+      .sort((a, b) => b.pendingCents - a.pendingCents || String(a.fullName || '').localeCompare(String(b.fullName || ''))).slice(0, 8)
+      .map((person) => pick(person, '_id fullName personCode packageName pendingCents paymentState'));
+    const sessionsWithDifference = cashSessions.filter((session) => Number.isSafeInteger(session.cashDifferenceCents) && session.cashDifferenceCents !== 0).length;
+    await context(eventId, versionId);
+    return {
+      totals: { people: people.length, accepted: accepted.length, cancelled: people.filter((person) => person.state === 'cancelled').length, review: people.filter((person) => person.state === 'review').length, arrived: arrived.length, housed: new Set(reservedStays.map((stay) => refId(stay.personRef))).size, team: accepted.filter((person) => person.isTeam).length, guests: accepted.filter((person) => person.isGuest).length },
+      finance: { dueCents: sumKnown('dueCents'), paidNetCents: sumKnown('paidNetCents'), pendingCents, refundPendingCents: sumKnown('refundPendingCents'), overpaidCents: sumKnown('overpaidCents'), withDebt: accepted.filter((person) => person.pendingCents > 0).length, withRefund: people.filter((person) => person.refundPendingCents > 0).length },
+      byPaymentState: countBy(accepted, (person) => unknown(person.paymentState)),
+      byRole: countBy(accepted, (person) => unknown(person.danceRole)),
+      byPackage: countBy(accepted, (person) => person.packageName || 'Sin paquete').slice(0, 8),
+      byCountry: countBy(accepted, (person) => person.country || 'Sin dato').slice(0, 8),
+      arrivalsByDate, debtors, program, lodging,
+      attention: { issues: people.filter((person) => person.hasDataIssues).length, requests, waiting, withRefund: people.filter((person) => person.refundPendingCents > 0).length, activitiesWithIssues: program.filter((activity) => activity.issues > 0).length, sessionsWithDifference }
+    };
+  }
   async function detail(eventId, versionId, personId) {
     await context(eventId, versionId);
     const person = await getScoped('personas', personId, eventId, versionId);
@@ -196,6 +301,6 @@ export function createRepository(data, collectionIds = {}) {
   }
   return {
     events: async () => { const result = await data.query(collectionId('BTEventos')).eq('isActive', true).ascending('eventKey').limit(100).find(options); return result.items.map((row) => pick(row, '_id title eventKey currentVersionRef')); },
-    context, list: queryList, summary, detail, requestDetail, activityDetail, roomDetail
+    context, list: queryList, summary, overview, detail, requestDetail, activityDetail, roomDetail
   };
 }

@@ -86,3 +86,8 @@ Pages se configura en Settings → Pages → Deploy from a branch → `main` →
 - [Permisos CMS](https://support.wix.com/en/article/cms-changing-your-collection-permissions)
 
 El diccionario de colecciones entregado en `wix-importacion/` conserva la propuesta histórica de Members/servidor externo para trazabilidad. Los pasos de autenticación vigentes son los de este README; los 14 esquemas, campos, referencias y reglas financieras se conservan.
+
+
+## Versión 1.1.0 del panel
+
+Panel visual (KPIs, gráficos, agenda por jornada, ocupación por noche), búsqueda global de personas (/ o Ctrl+K), filtros rápidos, ficha rediseñada, exportación CSV e impresión. Requiere sustituir en Wix `backend/baztango/service.js` y `repository.js` (acción `overview`); sin ello el panel funciona en modo simplificado. La interfaz se publica con push a `main`.
