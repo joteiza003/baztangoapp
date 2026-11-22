@@ -3,6 +3,7 @@ import { createService, normalize } from '../../wix/service.js';
 export const fixturePassword = 'solo-pruebas-ficticias-32-caracteres';
 export const person = {_id:'p1',fullName:'Iñigo Apellido ficticio de prueba con un nombre extraordinariamente largo',personCode:'TEST-P-001',state:'accepted',packageName:'Completo',danceRole:'leader',arrivalState:'registered',dueCents:20000,paidNetCents:10000,pendingCents:10000,reservationRef:'r1',email:'ficticio@example.invalid',dietaryKnown:false};
 const activity = {_id:'a1',name:'Cóctel ficticio de bienvenida',eventDate:'2026-11-26',category:'meal',timeConfirmed:false};
+const activity2 = {_id:'a2',name:'Milonga ficticia',eventDate:'2026-11-27',category:'milonga',timeConfirmed:false};
 const room = {_id:'h1',unitCode:'APT-TEST',hotelRoomNumber:'001',roomType:'apartment',capacity:5,isAvailable:true};
 const event = {_id:'e1',title:'Baztango · QA ficticio',startDate:'2026-11-26',endDate:'2026-11-29',currentVersionRef:'v1'};
 const records = {
@@ -30,7 +31,7 @@ export async function installApi(page) {
       const items = records[query.resource].filter((row)=>Object.entries(query.filters).every(([field,value])=>row[field]===value) && (!query.search || normalize([row.fullName,row.name,row.concept,row.paymentCode].filter(Boolean).join(' ')).includes(query.search)));
       return {items:items.slice(query.page*query.limit,(query.page+1)*query.limit),total:items.length,page:query.page,limit:query.limit};
     },
-    detail:async()=>({person,reservation:records.reservas[0],people:[person],payments:records.pagos,allocations:[],participations:[],activities:[activity],stays:[],rooms:[room]}),
+    detail:async()=>({person,reservation:records.reservas[0],people:[person],payments:records.pagos,allocations:[],participations:[{_id:'pt1',personRef:'p1',activityRef:'a1',entitlement:'included',eligible:true,attendanceState:'registered'},{_id:'pt2',personRef:'p1',activityRef:'a2',entitlement:'extra',eligible:true,attendanceState:'notRegistered'}],activities:[activity,activity2],stays:[{_id:'st1',personRef:'p1',roomRef:'h1',checkInDate:'2026-11-26',checkOutDate:'2026-11-29',state:'reserved'}],rooms:[room]}),
     requestDetail:async()=>({request:{...records.solicitudes[0],email:'solicitud@example.invalid'}}),
     activityDetail:async(eventId,versionId,activityId,query)=>({activity,counts:{entitled:1,registered:0,missing:1,issues:0},items:query.group==='registered'?[]:[{person,entitlement:'included',attendanceState:'notRegistered'}],total:query.group==='registered'?0:1,page:query.page,limit:query.limit}),
     roomDetail:async(eventId,versionId,roomId,night)=>({room,night,assigned:1,free:4,unknownDates:0,overCapacity:false,items:[{person,checkInDate:'2026-11-26',checkOutDate:'2026-11-29',state:'reserved'}]})

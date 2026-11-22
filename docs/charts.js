@@ -1,4 +1,4 @@
-import { esc, percent } from './format.js?v=1.1.0';
+import { esc, percent } from './format.js?v=1.2.0';
 
 // Gráficos sin estilos en línea: anchos y alturas mediante clases (w-N, h-N) para cumplir la política CSP.
 export function bar(value, max, toneName = 'brand') {

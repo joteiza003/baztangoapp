@@ -43,7 +43,7 @@ export function createService({ repository, getPassword, now = Date.now }) {
       const token = request.authorization?.startsWith('Bearer ') ? request.authorization.slice(7) : '';
       if (body.action !== 'login' && (!token || token.length > 1000 || token.split('.').length !== 2)) fail(401, 'ACCESS_DENIED');
       const password = await readPassword();
-      if (typeof password !== 'string' || password.length < 20) fail(503, 'CONFIGURATION_PENDING');
+      if (typeof password !== 'string' || password.length < 12) fail(503, 'CONFIGURATION_PENDING');
       const sign = (payload) => createHmac('sha256', password).update(`baztango-session-v1:${payload}`).digest('base64url');
       if (body.action === 'login') {
         if (typeof body.password !== 'string' || !equal(body.password, password)) fail(401, 'ACCESS_DENIED');

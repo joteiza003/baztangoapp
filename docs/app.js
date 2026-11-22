@@ -1,17 +1,18 @@
 import { config } from './config.js';
 import { retrySeconds } from './retry.js';
-import { sections, resources, tabs, labels, booleanFields, quickChips, typeKeyFor } from './catalogue.js?v=1.1.0';
-import { esc, ref, money, date, shiftDay, display, initials, pill, button, csvCell } from './format.js?v=1.1.0';
-import { icon, navButton, loginView, pendingView, skeleton, dashboardView, listView, programaView, programList, programItems, occupancyView, personView, roomView, facts } from './views.js?v=1.1.0';
+import { sections, resources, tabs, labels, booleanFields, quickChips, typeKeyFor } from './catalogue.js?v=1.2.0';
+import { esc, ref, money, date, shiftDay, display, initials, pill, button, csvCell } from './format.js?v=1.2.0';
+import { icon, navButton, loginView, pendingView, skeleton, dashboardView, listView, programaView, programList, programItems, occupancyView, personView, roomView, facts } from './views.js?v=1.2.0';
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
 const announcer = document.querySelector('#announcer');
 
 // Todo el estado privado vive solo en memoria: nada se guarda en el navegador.
-const blank = () => ({ token: '', expiresAt: 0, events: [], eventId: '', query: {}, context: null, data: null, summary: null, overview: null, detail: null, actPane: null, selActivity: '', room: null, night: '', roomFilter: 'all', message: '', loading: false, refreshing: false, exporting: false, navs: 0, gsearch: { q: '', items: [], open: false, loading: false, index: -1 }, activityQuery: { group: 'entitled', search: '' } });
-const state = { route: 'resumen', tab: 'personas', resource: 'personas', view: 'list', currentQuery: null, ...blank() };
+const blank = () => ({ token: '', expiresAt: 0, events: [], eventId: '', query: {}, context: null, data: null, summary: null, overview: null, detail: null, actPane: null, selActivity: '', room: null, night: '', roomFilter: 'all', message: '', loading: false, refreshing: false, exporting: false, navs: 0, gsearch: { q: '', items: [], open: false, loading: false, index: -1 }, ptab: 'resumen', activityQuery: { group: 'entitled', search: '', mode: 'list' } });
+// Preferencias de pantalla (no son datos privados): se conservan al cerrar sesión, nunca en el navegador.
+const state = { route: 'resumen', tab: 'personas', resource: 'personas', view: 'list', currentQuery: null, sideOpen: window.innerWidth >= 1500, listHidden: false, ...blank() };
 let lastActivity = Date.now();
 let revision = 0;
 let controller = new AbortController();
@@ -102,11 +103,12 @@ function shell() {
   const attention = state.overview?.attention;
   const logged = Boolean(state.token);
   const mobileRoutes = ['resumen', 'clientes', 'pagos', 'programa'];
-  return `<aside class="sidebar"><div class="brand"><div class="wordmark">baztango</div><p>Consulta del evento</p></div><nav aria-label="Principal">${Object.keys(sections).map((route) => navButton(state, route, false, route === 'clientes' && attention ? attention.issues : 0)).join('')}</nav><div class="side-foot"><p>Acceso de organización</p><strong>Solo consulta</strong>${button(logged ? 'logout' : 'session', logged ? 'Cerrar sesión' : 'Cuenta y sesión')}</div></aside>
-<div class="workspace"><header class="topbar"><div class="event-meta">${state.events.length ? `<label class="sr-only" for="event-selector">Edición</label><select id="event-selector">${state.events.map((event) => `<option value="${esc(event._id)}" ${state.eventId === event._id ? 'selected' : ''}>${esc(event.title || event.eventKey)}</option>`).join('')}</select>` : '<strong>Baztango · Organización</strong>'}<span class="badge ${logged ? 'green' : 'blue'}">${logged ? 'Acceso de consulta' : 'Solo consulta'}</span></div>
+  const fill = Boolean(state.token && state.context?.version && !state.detail && !state.room && !state.loading && state.route !== 'resumen' && (state.view === 'programa' || state.view === 'list' || state.view === 'ocupacion'));
+  return `<aside class="sidebar ${state.sideOpen ? '' : 'collapsed'}"><div class="brand"><div class="wordmark">baztango</div><p>Consulta del evento</p></div><nav aria-label="Principal">${Object.keys(sections).map((route) => navButton(state, route, false, route === 'clientes' && attention ? attention.issues : 0)).join('')}</nav><div class="side-foot"><p>Acceso de organización</p><strong>Solo consulta</strong>${button(logged ? 'logout' : 'session', `${icon('logout')}<span class="nav-label">${logged ? 'Cerrar sesión' : 'Cuenta y sesión'}</span>`, `aria-label="${logged ? 'Cerrar sesión' : 'Cuenta y sesión'}" title="${logged ? 'Cerrar sesión' : 'Cuenta y sesión'}"`, 'side-btn')}</div></aside>
+<div class="workspace"><header class="topbar"><div class="event-meta">${button('side', icon('menu'), `aria-label="${state.sideOpen ? 'Ocultar el menú lateral' : 'Mostrar el menú lateral'}" aria-expanded="${state.sideOpen}" title="Menú lateral"`, 'ghost icon-btn side-toggle')}${state.events.length ? `<label class="sr-only" for="event-selector">Edición</label><select id="event-selector">${state.events.map((event) => `<option value="${esc(event._id)}" ${state.eventId === event._id ? 'selected' : ''}>${esc(event.title || event.eventKey)}</option>`).join('')}</select>` : '<strong>Baztango · Organización</strong>'}<span class="badge ${logged ? 'green' : 'blue'}">${logged ? 'Acceso de consulta' : 'Solo consulta'}</span></div>
 <div class="gsearch" role="search"><label class="sr-only" for="global-search">Buscar persona</label>${icon('search')}<input id="global-search" type="search" maxlength="100" autocomplete="off" placeholder="Buscar persona…  ( / )" role="combobox" aria-expanded="false" aria-controls="gsearch-results" aria-autocomplete="list" value="${esc(state.gsearch.q)}" ${logged && state.context?.version ? '' : 'disabled'}><div id="gsearch-results" class="gsearch-results" role="listbox" aria-label="Resultados de personas" hidden></div></div>
 <div class="copy-meta">${copyMeta()}${logged ? `<span class="session-chip" id="session-chip">${sessionText()}</span>` : ''}</div><div class="top-actions">${button('refresh', `${icon('refresh')}<span class="btn-label">Volver a consultar</span>`, `aria-label="Volver a consultar" ${state.token && state.eventId ? '' : 'disabled'}`, 'ghost')}</div></header>
-<main id="main" tabindex="-1" class="route-${state.route}"><div class="page-heading"><div><div class="eyebrow">${esc(heading[0])}</div><h1>${esc(heading[1])}</h1><p>${esc(heading[2])}</p></div><span class="badge">Solo consulta</span></div>${state.message ? `<div role="alert" class="notice">${esc(state.message)}</div>` : ''}<div class="content">${content()}</div><footer><span>Baztango · Consulta del evento · <span>Versión ${VERSION}</span></span><span>Consultar Wix no inicia la carga desde el gestor.</span></footer></main></div>
+<main id="main" tabindex="-1" class="route-${state.route} ${fill ? 'fill' : ''}">${state.route === 'resumen' || !state.token ? `<div class="page-heading"><div><div class="eyebrow">${esc(heading[0])}</div><h1>${esc(heading[1])}</h1><p>${esc(heading[2])}</p></div><span class="badge">Solo consulta</span></div>` : `<h1 class="sr-only">${esc(heading[0])} · ${esc(heading[1])}</h1>`}${state.message ? `<div role="alert" class="notice">${esc(state.message)}</div>` : ''}<div class="content">${content()}</div><footer><span>Baztango · Consulta del evento · <span>Versión ${VERSION}</span></span><span>Consultar Wix no inicia la carga desde el gestor.</span></footer></main></div>
 <nav class="bottom-nav" aria-label="Navegación móvil">${mobileRoutes.map((route) => navButton(state, route, true)).join('')}${button('more', `${icon('more')}<span>Más</span>`, 'aria-label="Más apartados"', 'bottom-link')}</nav>`;
 }
 function content() {
@@ -229,6 +231,11 @@ async function loadActivityPane() {
   data.items.sort((x, y) => String(x.person.lastName || x.person.fullName || '').localeCompare(String(y.person.lastName || y.person.fullName || ''), 'es') || String(x.person.firstName || '').localeCompare(String(y.person.firstName || ''), 'es'));
   state.actPane = data;
 }
+function pickActivity(id) {
+  state.selActivity = id; state.activityQuery = { group: 'entitled', search: '', mode: state.activityQuery.mode || 'list' };
+  history.replaceState(null, '', `#/programa/${state.tab}/${encodeURIComponent(id)}`);
+  return refreshPane();
+}
 async function refreshPane() {
   revision++;
   state.refreshing = true; render();
@@ -248,18 +255,18 @@ async function route() {
   dialog.close();
   Object.assign(state, { detail: null, room: null });
   try {
-    if (first === 'persona' && second) await loadPerson(second);
+    if (first === 'persona' && second) { state.ptab = 'resumen'; await loadPerson(second); }
     else if (first === 'habitacion' && second) { state.loading = true; render(); await loadRoom(second, /^\d{4}-\d{2}-\d{2}$/.test(third || '') ? third : state.night || state.context.event.startDate); state.loading = false; render(); }
     else {
       const name = sections[first] ? first : 'resumen';
       const tab = tabs[name]?.find((item) => item.key === second) || tabs[name]?.[0];
       Object.assign(state, { route: name, tab: tab?.key || '', tabPinned: Boolean(second), resource: tab?.resource || 'personas', view: tab?.view || 'list' });
-      if (tab?.view === 'programa') { state.selActivity = third || ''; state.activityQuery = { group: 'entitled', search: '' }; }
+      if (tab?.view === 'programa') { state.selActivity = third || ''; state.activityQuery = { group: 'entitled', search: '', mode: state.activityQuery.mode || 'list' }; }
       await load();
     }
   } catch (error) { onError(error); return; }
   document.querySelector('#main')?.focus({ preventScroll: true });
-  window.scrollTo(0, 0);
+  window.scrollTo(0, 0); document.querySelector('#main')?.scrollTo(0, 0);
 }
 
 async function openRecord(resource, id) {
@@ -276,7 +283,7 @@ function openDialog(title, body) { dialog.innerHTML = `<div class="dialog-head">
 function applyListForm(form) {
   const data = new FormData(form);
   const current = query();
-  current.search = String(data.get('search') ?? current.search ?? ''); current.order = String(data.get('order') || 'default'); current.page = 0; current.filters = {};
+  current.search = String(data.get('search') ?? current.search ?? ''); current.order = String(data.get('order') || 'default'); current.page = 0; current.filters = {}; current.sort = null;
   for (const field of resources[state.resource][2]) { const value = data.get(field); if (value !== null && value !== '') current.filters[field] = booleanFields.has(field) ? value === 'true' : String(value); }
   return load({ soft: true });
 }
@@ -303,7 +310,7 @@ async function exportList() {
   download(`baztango-${resource}`, fields.map((field) => labels[field] || field), state.data.items.map((row) => fields.map((field) => csvValue(field, row[field]))));
 }
 async function exportActivity() {
-  const fields = ['entitlement', 'attendanceState', 'validRecordCount', 'needsReview'];
+  const fields = state.activityQuery.mode === 'attendance' ? ['entitlement', 'attendanceState', 'validRecordCount', 'needsReview'] : ['entitlement'];
   const meal = state.actPane.activity.category === 'meal';
   download('baztango-actividad', ['Persona', 'ID individual', ...fields.map((field) => labels[field] || field), ...(meal ? ['Información alimentaria conocida', 'Necesidad alimentaria'] : [])], state.actPane.items.map((row) => [row.person.fullName, row.person.personCode, ...fields.map((field) => csvValue(field, row[field])), ...(meal ? [csvValue('dietaryKnown', row.person.dietaryKnown), row.person.dietaryNotes || ''] : [])]));
 }
@@ -333,7 +340,12 @@ async function handleAction(target) {
   if (action === 'export') return exportList();
   if (action === 'export-activity') return exportActivity();
   if (action === 'activity-group') { state.activityQuery.group = target.dataset.group; return refreshPane(); }
-  if (action === 'pick-activity') { state.selActivity = target.dataset.id; state.activityQuery = { group: 'entitled', search: '' }; history.replaceState(null, '', `#/programa/${state.tab}/${encodeURIComponent(state.selActivity)}`); return refreshPane(); }
+  if (action === 'pick-activity') return pickActivity(target.dataset.id);
+  if (action === 'act-mode') { state.activityQuery.mode = target.dataset.mode; state.activityQuery.group = 'entitled'; return refreshPane(); }
+  if (action === 'toggle-list') { state.listHidden = !state.listHidden; return render(); }
+  if (action === 'side') { state.sideOpen = !state.sideOpen; return render(); }
+  if (action === 'ptab') { state.ptab = target.dataset.tab; render(); document.querySelector('#main')?.scrollTo(0, 0); return; }
+  if (action === 'sort') { const cur = query(); const key = target.dataset.key; cur.sort = cur.sort?.key === key ? (cur.sort.dir === 'asc' ? { key, dir: 'desc' } : null) : { key, dir: 'asc' }; return render(); }
   if (action === 'room-filter') { state.roomFilter = target.dataset.filter; return render(); }
   if (action === 'night') { state.night = target.dataset.night; if (state.route === 'alojamiento' && state.view === 'ocupacion' && !state.room) return render(); return go('#/alojamiento'); }
   if (action === 'room-night') {
@@ -361,7 +373,9 @@ async function handleAction(target) {
 
 document.addEventListener('click', (event) => {
   const target = event.target.closest('[data-action]');
+  const row = !target && !event.target.closest('a,input,select,summary') ? event.target.closest('tr[data-resource][data-id]') : null;
   if (target && !target.disabled) handleAction(target).catch(onError);
+  else if (row && !window.getSelection()?.toString()) openRecord(row.dataset.resource, row.dataset.id).catch(onError);
   else if (!event.target.closest('.gsearch') && state.gsearch.open) closeSearch();
 });
 document.addEventListener('submit', async (event) => {
@@ -397,6 +411,7 @@ document.addEventListener('input', (event) => {
 });
 document.addEventListener('change', (event) => {
   if (event.target.id === 'event-selector') loadContext(event.target.value);
+  else if (event.target.id === 'act-switch') pickActivity(event.target.value).catch(onError);
   else if (event.target.form?.id === 'search-form' && event.target.tagName === 'SELECT') { clearTimeout(timers.list); applyListForm(event.target.form).catch(onError); }
 });
 document.addEventListener('keydown', (event) => {

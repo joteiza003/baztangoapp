@@ -1,4 +1,4 @@
-import { values, tones, pills } from './catalogue.js?v=1.1.0';
+import { values, tones, pills } from './catalogue.js?v=1.2.0';
 
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 export const ref = (value) => (typeof value === 'object' && value ? value._id : value);

@@ -29,7 +29,13 @@ Comprobación autorizada posterior: el usuario introduce la contraseña de forma
 
 Resultado final verificado el 17/11/2026: el usuario confirma «ya ha funcionado». Se observa en su pestaña real de Chrome el estado Acceso de consulta, el botón Cerrar sesión y Sin datos publicados, sin formulario de contraseña ni error de conexión. Queda verificado el login real y la conexión con las colecciones existentes; no hay una copia del gestor publicada todavía. La contraseña fue introducida únicamente por el usuario y no se leyó, copió ni guardó por el agente. Se da por resuelto el bloqueo de acceso; la carga/sincronización de datos es un trabajo separado.
 
-No se han probado dispositivos físicos, Safari de iPhone/iPad, Chrome de Android, Firefox ni Safari de escritorio. El zoom de navegador real y las tecnologías de asistencia requieren validación manual adicional; se ha probado ampliación de texto y redistribución emulada. No se declara sincronización automática.
+No se han probado dispositivos físicos, Safari de iPhone/iPad, Chrome de Android, Firefox ni Safari de escritorio. El zoom de navegador real y las tecnologías de asistencia requieren validación manual adicional; se ha probado ampliación de texto y redistribución emulada. La actualización de sincronización se recoge a continuación.
+
+Sincronización del gestor, 17/11/2026: se implementa una copia SQLite consistente de solo lectura, exportación de las doce entidades de datos y publicación administrativa al iniciar la edición, en segundo plano. Las pruebas localizadas del gestor pasan (35); las del backend pasan (51), incluidas compresión acotada, integridad, filtros, fichas, versiones y limpieza exclusiva de copias fallidas propias. Se contrasta la compatibilidad de compresión y hashes Python/Node con las doce colecciones, sin publicar su contenido.
+
+La prueba real detecta WDE0195 en Wix: la cuota de ítems CMS del plan impedía la escritura por filas. Se instala almacenamiento gzip con un ítem por colección y versión, manteniendo el contrato lógico y las comprobaciones de publicación. Se verifican en el editor los cinco módulos instalados y se publica el backend preservando las funciones anteriores del sitio. También se guardan permisos avanzados privados para las catorce colecciones, sin acceso para visitantes, miembros o creadores; se conservan los administradores y colaboradores autorizados.
+
+La carga real completa recibe confirmación HTTP 200 de `commit`. Una segunda ejecución de `sync_on_startup` confirma `unchanged` y conserva la misma versión, sin reenviar las colecciones. Se deja la comprobación visual autenticada pendiente de la entrada privada de contraseña del usuario. No se incluye ninguna instantánea ni credencial real en este repositorio.
 
 ## Publicación
 

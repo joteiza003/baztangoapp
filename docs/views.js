@@ -1,17 +1,17 @@
-import { sections, resources, tabs, labels, values, enums, booleanFields, noSearch, quickChips, programTypes, packKey } from './catalogue.js?v=1.1.0';
-import { esc, ref, money, moneyShort, number, percent, date, time, dayLabel, display, initials, tone, pill, isPillField, button, safeTel } from './format.js?v=1.1.0';
-import { bar, stackedBar, donut, ring, legend } from './charts.js?v=1.1.0';
+import { sections, resources, tabs, labels, values, enums, booleanFields, noSearch, quickChips, programTypes, packKey } from './catalogue.js?v=1.2.0';
+import { esc, ref, money, moneyShort, number, percent, date, time, dayLabel, display, initials, tone, pill, isPillField, button, safeTel } from './format.js?v=1.2.0';
+import { bar, stackedBar, donut, ring, legend } from './charts.js?v=1.2.0';
 
 const attr = (value) => esc(JSON.stringify(value));
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
 export function icon(name) {
-  const paths = { resumen: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z', clientes: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', pagos: 'M2 5h20v14H2z M2 10h20 M6 15h3', programa: 'M3 5h18v16H3z M16 3v4 M8 3v4 M3 11h18', alojamiento: 'M3 21V3h13v18 M16 10h5v11 M7 7h5 M7 11h5 M7 15h5 M8 21v-3h4v3', caja: 'M3 7h18v14H3z M7 7V3h10v4 M8 12h8', lock: 'M5 10h14v11H5z M8 10V7a4 4 0 0 1 8 0v3 M12 15v2', more: 'M5 12h1 M11 12h1 M17 12h1', search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3', download: 'M12 3v12 M7 10l5 5 5-5 M4 21h16', print: 'M6 9V3h12v6 M6 18H4v-7h16v7h-2 M6 14h12v7H6z', refresh: 'M21 12a9 9 0 1 1-3-6.7 M21 3v6h-6', phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2', mail: 'M3 5h18v14H3z M3 7l9 6 9-6', alert: 'M12 3l10 18H2z M12 10v5 M12 18h.01', clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 2' };
+  const paths = { resumen: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z', clientes: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', pagos: 'M2 5h20v14H2z M2 10h20 M6 15h3', programa: 'M3 5h18v16H3z M16 3v4 M8 3v4 M3 11h18', alojamiento: 'M3 21V3h13v18 M16 10h5v11 M7 7h5 M7 11h5 M7 15h5 M8 21v-3h4v3', caja: 'M3 7h18v14H3z M7 7V3h10v4 M8 12h8', lock: 'M5 10h14v11H5z M8 10V7a4 4 0 0 1 8 0v3 M12 15v2', more: 'M5 12h1 M11 12h1 M17 12h1', search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3', download: 'M12 3v12 M7 10l5 5 5-5 M4 21h16', print: 'M6 9V3h12v6 M6 18H4v-7h16v7h-2 M6 14h12v7H6z', refresh: 'M21 12a9 9 0 1 1-3-6.7 M21 3v6h-6', phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2', mail: 'M3 5h18v14H3z M3 7l9 6 9-6', alert: 'M12 3l10 18H2z M12 10v5 M12 18h.01', clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 2', menu: 'M4 6h16 M4 12h16 M4 18h16', logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9' };
   return `<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.resumen}"/></svg>`;
 }
 
 export function navButton(state, route, mobile = false, badge = 0) {
   const label = sections[route][0];
-  return button('nav', `${icon(route)}<span class="${mobile ? '' : 'nav-label'}">${label}</span>${badge ? `<span class="nav-badge" aria-label="${badge} por revisar">${badge}</span>` : ''}`, `data-route="${route}" aria-label="${label}" ${state.route === route ? 'aria-current="page"' : ''}`, mobile ? 'bottom-link' : 'nav-button');
+  return button('nav', `${icon(route)}<span class="${mobile ? '' : 'nav-label'}">${label}</span>${badge ? `<span class="nav-badge" aria-label="${badge} por revisar">${badge}</span>` : ''}`, `data-route="${route}" aria-label="${label}" title="${label}" ${state.route === route ? 'aria-current="page"' : ''}`, mobile ? 'bottom-link' : 'nav-button');
 }
 
 export function loginView(state) {
@@ -100,8 +100,7 @@ function agendaRow(activity) {
 export function financeSummary(state) {
   const f = state.overview?.finance || state.summary || {};
   const items = [['Exigible total', f.dueCents ?? state.summary?.dueCents], ['Cobrado neto', f.paidNetCents ?? state.summary?.paidNetCents], ['Pendiente de cobro', f.pendingCents ?? state.summary?.pendingCents], ['Devolución pendiente', f.refundPendingCents ?? state.summary?.refundPendingCents]];
-  const due = items[0][1]; const paid = items[1][1];
-  return `<div class="metrics">${items.map(([title, value], index) => `<div class="panel kpi static ${index === 2 && value > 0 ? 'alert' : ''}"><span class="kpi-title">${title}</span><strong>${esc(money(value))}</strong><small>Alcance: todas las personas de la copia, incluidas bajas</small>${index === 1 ? bar(paid ?? 0, due ?? 0, 'ok') : ''}</div>`).join('')}</div><p class="small muted">Los anticipos, pagos directos al hotel y devoluciones siguen las proyecciones del gestor. Los excesos no compensan deudas ajenas.</p>`;
+  return `<div class="metrics strip" title="Alcance: todas las personas de la copia, incluidas bajas">${items.map(([title, value], index) => `<div class="kpi static ${index === 2 && value > 0 ? 'alert' : ''}"><span class="kpi-title">${title}</span><strong>${esc(money(value))}</strong></div>`).join('')}</div>`;
 }
 
 function filterControl(state, current, field) {
@@ -120,12 +119,30 @@ export function tabBar(state) {
   return `<div class="tabs" role="group" aria-label="Tipo de consulta">${tabs[state.route].map((tab) => button('tab', esc(tab.label), `data-tab="${tab.key}" aria-pressed="${tab.key === state.tab}"`)).join('')}</div>`;
 }
 
+export function sortRows(rows, sort) {
+  if (!sort?.key) return rows;
+  const dir = sort.dir === 'desc' ? -1 : 1;
+  const empty = (value) => value === null || value === undefined || value === '';
+  return [...rows].sort((a, b) => {
+    const x = a[sort.key]; const y = b[sort.key];
+    if (empty(x) || empty(y)) return empty(x) === empty(y) ? 0 : empty(x) ? 1 : -1;
+    if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
+    return String(display(sort.key, x)).localeCompare(String(display(sort.key, y)), 'es', { numeric: true, sensitivity: 'base' }) * dir;
+  });
+}
+
 export function listView(state, current) {
   const resource = state.resource;
   const data = state.data || { items: [], total: 0 };
+  const rows = sortRows(data.items, current.sort);
   const chips = resource === 'personas' ? `<div class="chips" role="group" aria-label="Filtros rápidos">${quickChips.personas.map((chip) => button('chip', esc(chip.label), `data-chip="${chip.id}" aria-pressed="${chipActive(chip, current.filters)}"`, 'chip')).join('')}</div>` : '';
   const filterCount = Object.keys(current.filters).length;
-  return `${state.route === 'pagos' && resource === 'personas' ? financeSummary(state) : ''}<section class="panel ${state.refreshing ? 'refreshing' : ''}" aria-busy="${state.refreshing ? 'true' : 'false'}">${tabBar(state)}<form id="search-form"><div class="form-row">${noSearch.has(resource) ? '<p class="small">Usa los filtros por referencia para consultar este listado.</p>' : `<label>Buscar en ${esc(resources[resource][0].toLowerCase())}<input id="list-search" name="search" type="search" maxlength="100" value="${esc(current.search)}" placeholder="${resource === 'personas' ? 'Nombre, reserva, ID, correo o teléfono' : 'Código, nombre o concepto'}" autocomplete="off"></label>`}<label>Orden<select name="order"><option value="default" ${current.order === 'default' ? 'selected' : ''}>Orden de consulta</option><option value="name" ${current.order === 'name' ? 'selected' : ''}>Nombre / referencia</option><option value="pendingDesc" ${current.order === 'pendingDesc' ? 'selected' : ''}>Pendiente descendente</option><option value="date" ${current.order === 'date' ? 'selected' : ''}>Fecha</option></select></label><button type="submit" class="primary">Buscar</button></div>${chips}<details ${filterCount > (resource === 'personas' ? 1 : 0) ? 'open' : ''}><summary>Más filtros ${filterCount ? `· ${filterCount} activos` : ''}</summary><div class="filter-grid">${resources[resource][2].filter((field) => field !== 'sourceState').map((field) => filterControl(state, current, field)).join('')}</div><div class="form-row"><button class="primary" type="submit">Aplicar filtros</button>${button('clear', 'Limpiar filtros')}</div></details></form><div class="results-head"><div><h2>${esc(resources[resource][0])}</h2><p role="status">${number(data.total)} ${resource === 'personas' ? 'personas' : resource === 'solicitudes' ? 'solicitudes' : 'registros'}</p></div><div class="head-tools">${button('export', `${icon('download')}<span>${state.exporting ? 'Exportando…' : 'Exportar CSV'}</span>`, `${state.exporting || !data.total ? 'disabled' : ''}`, 'ghost')}</div></div>${data.items.length ? table(resource, data.items) : `<div class="empty"><h2>Sin resultados</h2><p>No hay registros que coincidan con esta consulta.</p>${button('clear', 'Limpiar filtros')}</div>`}<div class="list-foot"><span>${number(data.total)} registros en una sola lista</span><span>Los importes y estados proceden de la copia. Consulta el detalle para ver el contexto completo.</span></div></section>`;
+  const unit = resource === 'personas' ? 'personas' : resource === 'solicitudes' ? 'solicitudes' : 'registros';
+  const search = noSearch.has(resource) ? '<span class="small grow">Usa los filtros por referencia para consultar este listado.</span>' : `<label class="grow"><span class="sr-only">Buscar en ${esc(resources[resource][0].toLowerCase())}</span><input id="list-search" name="search" type="search" maxlength="100" value="${esc(current.search)}" placeholder="${resource === 'personas' ? 'Buscar: nombre, reserva, ID, correo o teléfono' : 'Buscar: código, nombre o concepto'}" autocomplete="off"></label>`;
+  const order = `<label class="order"><span class="sr-only">Orden</span><select name="order"><option value="default" ${current.order === 'default' ? 'selected' : ''}>Orden de consulta</option><option value="name" ${current.order === 'name' ? 'selected' : ''}>Nombre / referencia</option><option value="pendingDesc" ${current.order === 'pendingDesc' ? 'selected' : ''}>Pendiente descendente</option><option value="date" ${current.order === 'date' ? 'selected' : ''}>Fecha</option></select></label>`;
+  return `${state.route === 'pagos' && resource === 'personas' ? financeSummary(state) : ''}<section class="panel list-panel ${state.refreshing ? 'refreshing' : ''}" aria-busy="${state.refreshing ? 'true' : 'false'}"><div class="bar-row">${tabBar(state)}<div class="bar-tools"><span class="count" role="status">${number(data.total)} ${unit}</span>${button('export', `${icon('download')}<span>${state.exporting ? 'Exportando…' : 'Exportar CSV'}</span>`, `${state.exporting || !data.total ? 'disabled' : ''}`, 'ghost')}</div></div><h2 class="sr-only">${esc(resources[resource][0])}</h2>
+<form id="search-form" class="toolbar">${search}${order}<button type="submit" class="primary">Buscar</button>${chips}<details class="more-filters" ${filterCount > (resource === 'personas' ? 1 : 0) ? 'open' : ''}><summary>Más filtros ${filterCount ? `· ${filterCount} activos` : ''}</summary><div class="filter-grid">${resources[resource][2].filter((field) => field !== 'sourceState').map((field) => filterControl(state, current, field)).join('')}</div><div class="form-row"><button class="primary" type="submit">Aplicar filtros</button>${button('clear', 'Limpiar filtros')}</div></details></form>
+${rows.length ? table(resource, rows, current.sort) : `<div class="empty"><h2>Sin resultados</h2><p>No hay registros que coincidan con esta consulta.</p>${button('clear', 'Limpiar filtros')}</div>`}<div class="list-foot"><span>Pulsa una fila para abrir su ficha · pulsa una cabecera para ordenar</span><span>Importes y estados de la copia publicada</span></div></section>`;
 }
 
 function cell(resource, field, row, index) {
@@ -139,13 +156,20 @@ function cell(resource, field, row, index) {
   return `<td><span class="cell-label">${esc(labels[field] || field)}</span>${lead ? `<span class="person-cell">${lead}<span>${html}${sub}</span></span>` : `${html}${sub}`}</td>`;
 }
 
-export function table(resource, rows) {
+export function table(resource, rows, sort) {
   const fields = resources[resource][1];
-  return `<div class="scroll" tabindex="0" role="region" aria-label="${esc(resources[resource][0])}"><table class="record-table"><caption class="sr-only">${esc(resources[resource][0])}</caption><thead><tr>${fields.map((field) => `<th scope="col">${esc(labels[field] || field)}</th>`).join('')}<th scope="col">Consulta</th></tr></thead><tbody>${rows.map((row) => `<tr class="${packKey(row.packageName) ? `pk-${packKey(row.packageName)}` : ""}">${fields.map((field, index) => cell(resource, field, row, index)).join('')}<td>${button('open', resource === 'personas' ? 'Ver ficha' : 'Consultar', `data-id="${esc(row._id)}" data-resource="${resource}" aria-label="${resource === 'personas' ? 'Ver ficha de' : 'Consultar'} ${esc(row.fullName || row.name || row.applicantNames || row.title || row.unitCode || row.concept || row.paymentCode || row._id)}"`, 'open-btn')}</td></tr>`).join('')}</tbody></table></div>`;
+  const head = fields.map((field) => {
+    const active = sort?.key === field;
+    return `<th scope="col" ${active ? `aria-sort="${sort.dir === 'desc' ? 'descending' : 'ascending'}"` : ''}>${button('sort', `${esc(labels[field] || field)}<span class="sort-mark ${active ? 'on' : ''}" aria-hidden="true">${active ? (sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>`, `data-key="${field}"`, 'th-sort')}</th>`;
+  }).join('');
+  return `<div class="scroll" tabindex="0" role="region" aria-label="${esc(resources[resource][0])}"><table class="record-table clickable"><caption class="sr-only">${esc(resources[resource][0])}</caption><thead><tr>${head}<th scope="col" class="act-col">Consulta</th></tr></thead><tbody>${rows.map((row) => `<tr data-id="${esc(row._id)}" data-resource="${resource}" class="${packKey(row.packageName) ? `pk-${packKey(row.packageName)}` : ''}">${fields.map((field, index) => cell(resource, field, row, index)).join('')}<td class="act-col">${button('open', resource === 'personas' ? 'Ver ficha' : 'Consultar', `data-id="${esc(row._id)}" data-resource="${resource}" aria-label="${resource === 'personas' ? 'Ver ficha de' : 'Consultar'} ${esc(row.fullName || row.name || row.applicantNames || row.title || row.unitCode || row.concept || row.paymentCode || row._id)}"`, 'open-btn')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
-export function facts(row, allowed) {
-  return `<dl class="facts">${(allowed || Object.keys(row)).filter((field) => !['_id', 'title', 'eventRef', 'versionRef', 'searchText'].includes(field) && row[field] !== undefined).map((field) => `<div><dt>${esc(labels[field] || field)}</dt><dd>${isPillField(field, row[field]) ? pill(field, row[field]) : esc(display(field, row[field]))}</dd></div>`).join('')}</dl>`;
+export function facts(row, allowed, { compact = false } = {}) {
+  const hidden = (field, value) => compact && (value === null || value === undefined || value === '' || (field.endsWith('Cents') && value === 0));
+  const shown = (allowed || Object.keys(row)).filter((field) => !['_id', 'title', 'eventRef', 'versionRef', 'searchText'].includes(field) && row[field] !== undefined && !hidden(field, row[field]));
+  if (!shown.length) return '<p class="small">Sin datos que mostrar.</p>';
+  return `<dl class="facts">${shown.map((field) => `<div><dt>${esc(labels[field] || field)}</dt><dd>${isPillField(field, row[field]) ? pill(field, row[field]) : esc(display(field, row[field]))}</dd></div>`).join('')}</dl>`;
 }
 
 export function programItems(state) { return state.overview?.program || state.data?.items || []; }
@@ -159,21 +183,38 @@ export function programaView(state) {
   const list = programList(state, key);
   const pane = state.actPane;
   const todayDay = today();
+  const hidden = Boolean(state.listHidden && pane);
   const days = new Map();
   for (const activity of list) { const day = activity.eventDate || 'sin-fecha'; if (!days.has(day)) days.set(day, []); days.get(day).push(activity); }
-  const typeTabs = `<div class="tabs" role="group" aria-label="Tipo de actividad">${programTypes.map((type) => { const total = programList(state, type.key).length; return total || type.key === key ? button('tab', `${esc(type.label)} · ${total}`, `data-tab="${type.key}" aria-pressed="${type.key === key}"`) : ''; }).join('')}</div>`;
+  const typeTabs = `<div class="bar-row"><div class="tabs" role="group" aria-label="Tipo de actividad">${programTypes.map((type) => { const total = programList(state, type.key).length; return total || type.key === key ? button('tab', `${esc(type.label)} · ${total}`, `data-tab="${type.key}" aria-pressed="${type.key === key}"`) : ''; }).join('')}</div></div>`;
   const left = list.length ? `<div class="prog-list" role="group" aria-label="Actividades">${[...days].map(([day, rows]) => `<div class="prog-day">${day === 'sin-fecha' ? 'Sin fecha' : esc(dayLabel(day, true))}${day === todayDay ? ' · Hoy' : ''}</div>${rows.map((activity) => button('pick-activity', `<strong>${esc(activity.name)}</strong><small>${activity.timeConfirmed ? esc(time(activity.startsAt)) : 'Horario por confirmar'}${activity.venue ? ` · ${esc(activity.venue)}` : ''}</small>${Number.isFinite(activity.entitled) ? `<span class="prog-n">${number(activity.registered)}/${number(activity.entitled)}</span>` : ''}`, `data-id="${esc(activity._id)}" aria-pressed="${activity._id === state.selActivity}" aria-label="Consultar ${esc(activity.name)}"`, 'prog-item')).join('')}`).join('')}</div>` : '<div class="empty"><p>No hay actividades de este tipo en la copia.</p></div>';
-  return `<section class="panel ${state.refreshing ? 'refreshing' : ''}">${typeTabs}<div class="prog">${left}<div class="prog-pane">${pane ? participantsPane(state, pane) : '<div class="empty"><p>Selecciona una actividad para ver su lista.</p></div>'}</div></div></section>`;
+  return `<section class="panel prog-panel ${state.refreshing ? 'refreshing' : ''}">${typeTabs}<div class="prog ${hidden ? 'no-list' : ''}">${hidden ? '' : left}<div class="prog-pane">${pane ? participantsPane(state, pane, list) : `<div class="empty"><p>Selecciona una actividad para ver su lista.</p></div>`}</div></div></section>`;
 }
 
-function participantsPane(state, data) {
+function participantRow(item, index, attendance, meal) {
+  const person = item.person;
+  const name = `<td><span class="cell-label">Persona</span>${button('person-ref', esc(person.fullName), `data-id="${esc(person._id)}" aria-label="Ver ficha de ${esc(person.fullName)}"`, 'name-link')}<span class="record-sub inline">${esc(person.personCode || '')}${item.needsReview ? ' · Revisar' : ''}</span></td>`;
+  const pack = `<td><span class="cell-label">Paquete</span>${person.packageName ? `<span class="pk-tag">${esc(person.packageName)}</span>` : 'Sin dato'}</td>`;
+  const entitlement = `<td><span class="cell-label">Derecho</span>${pill('entitlement', item.entitlement || 'none')}</td>`;
+  const lead = `<td class="num-col"><span class="cell-label">Nº</span>${index + 1}</td>`;
+  const klass = packKey(person.packageName) ? `pk-${packKey(person.packageName)}` : '';
+  if (attendance) return `<tr class="${klass}">${lead}${name}${pack}<td><span class="cell-label">Asistencia</span>${pill('attendanceState', item.attendanceState || 'unknown')}</td>${entitlement}<td><span class="cell-label">Registros</span>${item.validRecordCount > 0 ? number(item.validRecordCount) : '–'}</td></tr>`;
+  return `<tr class="${klass}">${lead}${name}<td><span class="cell-label">Rol</span>${esc(display('danceRole', person.danceRole))}</td>${pack}${entitlement}${meal ? `<td><span class="cell-label">Alimentación</span>${person.dietaryKnown ? esc(person.dietaryNotes || 'Sin necesidades') : 'Sin dato'}</td>` : ''}</tr>`;
+}
+
+function participantsPane(state, data, list) {
   const meal = data.activity.category === 'meal';
-  const group = state.activityQuery.group;
+  const { group, search, mode } = state.activityQuery;
+  const attendance = mode === 'attendance';
   const counts = data.counts;
   const rows = data.items;
-  return `<div class="prog-head"><div><div class="eyebrow">${esc(display('category', data.activity.category))}</div><h2>${esc(data.activity.name)}</h2><p class="small">${esc(dayLabel(data.activity.eventDate, true))} · ${data.activity.timeConfirmed ? esc(time(data.activity.startsAt)) : 'Horario por confirmar'}${data.activity.venue ? ` · ${esc(data.activity.venue)}` : ''}</p></div><div class="head-tools">${button('print', `${icon('print')}<span>Imprimir lista</span>`, '', 'ghost')}${button('export-activity', `${icon('download')}<span>${state.exporting ? 'Exportando…' : 'Exportar CSV'}</span>`, state.exporting || !rows.length ? 'disabled' : '', 'ghost')}</div></div>
-<div class="seg-tabs">${[['entitled', 'Con derecho'], ['registered', 'Asistencia registrada'], ['missing', 'Con derecho, sin registro']].map(([id, title]) => button('activity-group', `${title} · ${counts[id]}`, `data-group="${id}" aria-pressed="${group === id}"`)).join('')}${counts.issues ? `<span class="pill bad">${counts.issues} con incidencia</span>` : ''}<form id="activity-search" class="inline-form"><label>Buscar participante<input id="activity-search-input" type="search" name="search" maxlength="100" value="${esc(state.activityQuery.search)}" autocomplete="off"></label><button class="primary" type="submit">Buscar</button></form></div>
-<div class="scroll" tabindex="0" role="region" aria-label="Lista de participantes"><table class="record-table"><caption class="sr-only">Participantes de ${esc(data.activity.name)}</caption><thead><tr><th scope="col" class="num-col">Nº</th><th scope="col">Persona</th><th scope="col">Rol</th><th scope="col">Paquete</th><th scope="col">Derecho</th><th scope="col">Asistencia</th>${meal ? '<th scope="col">Alimentación</th>' : ''}</tr></thead><tbody>${rows.map((item, index) => `<tr class="${packKey(item.person.packageName) ? `pk-${packKey(item.person.packageName)}` : ''}"><td class="num-col"><span class="cell-label">Nº</span>${index + 1}</td><td><span class="cell-label">Persona</span>${button('person-ref', esc(item.person.fullName), `data-id="${esc(item.person._id)}" aria-label="Ver ficha de ${esc(item.person.fullName)}"`, 'name-link')}<span class="record-sub inline">${esc(item.person.personCode || '')}${item.needsReview ? ' · Revisar' : ''}</span></td><td><span class="cell-label">Rol</span>${esc(display('danceRole', item.person.danceRole))}</td><td><span class="cell-label">Paquete</span>${item.person.packageName ? `<span class="pk-tag">${esc(item.person.packageName)}</span>` : 'Sin dato'}</td><td><span class="cell-label">Derecho</span>${pill('entitlement', item.entitlement || 'none')}</td><td><span class="cell-label">Asistencia</span>${pill('attendanceState', item.attendanceState || 'unknown')}</td>${meal ? `<td><span class="cell-label">Alimentación</span>${item.person.dietaryKnown ? esc(item.person.dietaryNotes || 'Sin necesidades') : 'Sin dato'}</td>` : ''}</tr>`).join('') || `<tr><td colspan="${meal ? 7 : 6}">Sin personas en este grupo.</td></tr>`}</tbody></table></div><div class="list-foot"><span>${data.total} personas en este grupo</span><span>Las asistencias fuera de derecho se conservan; los registros repetidos no aumentan el número de personas.</span></div>`;
+  const hidden = Boolean(state.listHidden);
+  const switcher = hidden && list.length ? `<label class="act-switch"><span class="sr-only">Actividad</span><select id="act-switch">${list.map((activity) => `<option value="${esc(activity._id)}" ${activity._id === state.selActivity ? 'selected' : ''}>${esc(dayLabel(activity.eventDate))} · ${esc(activity.name)}</option>`).join('')}</select></label>` : '';
+  const heads = attendance ? ['Nº', 'Persona', 'Paquete', 'Asistencia', 'Derecho', 'Registros'] : ['Nº', 'Persona', 'Rol', 'Paquete', 'Derecho', ...(meal ? ['Alimentación'] : [])];
+  const groups = [['entitled', 'Todos con derecho'], ['registered', 'Asistencia registrada'], ['missing', 'Con derecho, sin registro']];
+  return `<div class="prog-head"><div><div class="eyebrow">${esc(display('category', data.activity.category))}</div><h2>${esc(data.activity.name)}</h2><p class="small">${esc(dayLabel(data.activity.eventDate, true))} · ${data.activity.timeConfirmed ? esc(time(data.activity.startsAt)) : 'Horario por confirmar'}${data.activity.venue ? ` · ${esc(data.activity.venue)}` : ''}</p></div><div class="head-tools">${switcher}${button('toggle-list', `${icon('menu')}<span>${hidden ? 'Mostrar actividades' : 'Ocultar actividades'}</span>`, `aria-expanded="${!hidden}"`, 'ghost')}${button('print', `${icon('print')}<span>Imprimir</span>`, '', 'ghost')}${button('export-activity', `${icon('download')}<span>${state.exporting ? 'Exportando…' : 'Exportar CSV'}</span>`, state.exporting || !rows.length ? 'disabled' : '', 'ghost')}</div></div>
+<div class="seg-tabs"><div class="mode-switch" role="group" aria-label="Qué consultar">${button('act-mode', `Participantes · ${counts.entitled}`, `data-mode="list" aria-pressed="${!attendance}"`)}${button('act-mode', `Asistencias · ${counts.registered}/${counts.entitled}`, `data-mode="attendance" aria-pressed="${attendance}"`)}</div>${attendance ? `<div class="chips tight" role="group" aria-label="Grupo de asistencia">${groups.map(([id, title]) => button('activity-group', `${title} · ${counts[id]}`, `data-group="${id}" aria-pressed="${group === id}"`, 'chip')).join('')}${counts.issues ? `<span class="pill bad">${counts.issues} con incidencia</span>` : ''}</div>` : ''}<form id="activity-search" class="inline-form"><label><span class="sr-only">Buscar participante</span><input id="activity-search-input" type="search" name="search" maxlength="100" value="${esc(search)}" placeholder="Buscar participante" autocomplete="off"></label><button class="primary" type="submit">Buscar</button></form></div>
+<div class="scroll" tabindex="0" role="region" aria-label="Lista de participantes"><table class="record-table"><caption class="sr-only">${attendance ? 'Asistencias' : 'Participantes'} de ${esc(data.activity.name)}</caption><thead><tr>${heads.map((head, index) => `<th scope="col" ${index === 0 ? 'class="num-col"' : ''}>${head}</th>`).join('')}</tr></thead><tbody>${rows.map((item, index) => participantRow(item, index, attendance, meal)).join('') || `<tr><td colspan="${heads.length}">Sin personas en este grupo.</td></tr>`}</tbody></table></div><div class="list-foot"><span>${data.total} personas en este grupo</span><span>${attendance ? 'Las asistencias fuera de derecho se conservan; los registros repetidos no aumentan el número de personas.' : 'Personas con derecho a esta actividad. Las asistencias se consultan en «Asistencias».'}</span></div>`;
 }
 
 export function occupancyView(state) {
@@ -196,32 +237,116 @@ export function occupancyView(state) {
   const shown = rooms.filter((r) => filter === 'all' || r.status === filter);
   const free = summary && summary.capacity > 0 ? Math.max(summary.capacity - summary.assigned, 0) : null;
   return `<section class="panel ${state.refreshing ? 'refreshing' : ''}">${tabBar(state)}${nights.length ? `<div class="chips" role="group" aria-label="Noche">${nights.map((item) => button('night', esc(dayLabel(item.date)), `data-night="${esc(item.date)}" aria-pressed="${item.date === night}"`, 'chip')).join('')}</div>
-<div class="metrics compact-metrics"><div class="panel kpi static"><span class="kpi-title">Alojados esa noche</span><strong>${number(summary?.assigned)}</strong><small>${summary?.capacity ? `de ${number(summary.capacity)} plazas en servicio` : 'Capacidad sin dato'}</small>${summary?.capacity ? bar(summary.assigned, summary.capacity, summary.assigned > summary.capacity ? 'bad' : 'info') : ''}</div><div class="panel kpi static"><span class="kpi-title">Plazas libres</span><strong>${free === null ? 'Sin dato' : number(free)}</strong><small>${counts.free} unidades libres</small></div><div class="panel kpi static ${counts.over ? 'alert' : ''}"><span class="kpi-title">Sobre capacidad</span><strong>${counts.over}</strong><small>unidades esa noche</small></div></div>
+<div class="metrics strip compact-metrics"><div class="panel kpi static"><span class="kpi-title">Alojados esa noche</span><strong>${number(summary?.assigned)}</strong><small>${summary?.capacity ? `de ${number(summary.capacity)} plazas en servicio` : 'Capacidad sin dato'}</small>${summary?.capacity ? bar(summary.assigned, summary.capacity, summary.assigned > summary.capacity ? 'bad' : 'info') : ''}</div><div class="panel kpi static"><span class="kpi-title">Plazas libres</span><strong>${free === null ? 'Sin dato' : number(free)}</strong><small>${counts.free} unidades libres</small></div><div class="panel kpi static ${counts.over ? 'alert' : ''}"><span class="kpi-title">Sobre capacidad</span><strong>${counts.over}</strong><small>unidades esa noche</small></div></div>
 ${lodging.unknownDates ? `<div class="notice info">${lodging.unknownDates} estancias tienen fechas desconocidas y no se cuentan en la ocupación.</div>` : ''}
 <div class="chips" role="group" aria-label="Estado de la unidad">${[['all', 'Todas'], ['free', 'Libres'], ['part', 'Con plazas'], ['full', 'Completas'], ['over', 'Sobre capacidad']].map(([key, text]) => button('room-filter', `${text} · ${counts[key]}`, `data-filter="${key}" aria-pressed="${filter === key}"`, 'chip')).join('')}</div>
-<div class="room-grid">${shown.map(({ room, count, status }) => `<article class="room-card ${status}"><header><div><h3>${esc(room.unitCode)}</h3><p class="small">Hotel: ${esc(room.hotelRoomNumber || 'Sin dato')} · ${esc(display('roomType', room.roomType))}</p></div><span class="pill ${statusTone[status]}">${statusText[status]}</span></header><div class="room-occ"><strong>${count}</strong><span>/ ${room.capacity ?? '?'} plazas</span></div>${bar(count, room.capacity || 0, status === 'over' ? 'bad' : status === 'full' ? 'info' : 'ok')}${button('open', 'Ver ocupantes →', `data-id="${esc(room._id)}" data-resource="habitaciones" aria-label="Consultar ${esc(room.unitCode)}"`, 'open-btn')}</article>`).join('') || '<div class="empty"><p>No hay unidades con ese estado esa noche.</p></div>'}</div>
-<p class="small muted">La noche de salida queda fuera de la estancia. Las asignaciones no equivalen a llegadas registradas.</p>` : '<div class="empty"><h2>Sin estancias</h2><p>No hay estancias con fechas conocidas en esta copia.</p></div>'}</section>`;
+<div class="room-scroll"><div class="room-grid">${shown.map(({ room, count, status }) => `<article class="room-card ${status}"><header><div><h3>${esc(room.unitCode)}</h3><p class="small">Hotel: ${esc(room.hotelRoomNumber || 'Sin dato')} · ${esc(display('roomType', room.roomType))}</p></div><span class="pill ${statusTone[status]}">${statusText[status]}</span></header><div class="room-occ"><strong>${count}</strong><span>/ ${room.capacity ?? '?'} plazas</span></div>${bar(count, room.capacity || 0, status === 'over' ? 'bad' : status === 'full' ? 'info' : 'ok')}${button('open', 'Ver ocupantes →', `data-id="${esc(room._id)}" data-resource="habitaciones" aria-label="Consultar ${esc(room.unitCode)}"`, 'open-btn')}</article>`).join('') || '<div class="empty"><p>No hay unidades con ese estado esa noche.</p></div>'}</div>
+<p class="small muted">La noche de salida queda fuera de la estancia. Las asignaciones no equivalen a llegadas registradas.</p></div>` : '<div class="empty"><h2>Sin estancias</h2><p>No hay estancias con fechas conocidas en esta copia.</p></div>'}</section>`;
+}
+
+const isEntitled = (part) => part.eligible !== false && ['included', 'extra'].includes(part.entitlement);
+
+// Solo aparecen las pestañas que tienen contenido para esta persona.
+export function personTabList(d) {
+  const p = d.person;
+  const entitled = d.participations.filter(isEntitled);
+  const registered = d.participations.filter((part) => part.attendanceState === 'registered');
+  const list = [['resumen', 'Resumen']];
+  if (d.payments.length || d.allocations.length || p.dueCents > 0 || p.pendingCents > 0) list.push(['pagos', 'Pagos']);
+  if (entitled.length) list.push(['programa', `Programa · ${entitled.length}`]);
+  if (d.participations.length) list.push(['asistencias', `Asistencias · ${registered.length}/${d.participations.length}`]);
+  if (d.stays.length) list.push(['alojamiento', `Alojamiento · ${d.stays.length}`]);
+  list.push(['reserva', 'Reserva y contacto']);
+  return list;
+}
+
+function personTile(tab, title, value, sub, extra = '', toneName = '') {
+  return button('ptab', `<span class="kpi-title">${esc(title)}</span><strong>${value}</strong><small>${sub}</small>${extra}`, `data-tab="${tab}" aria-label="${esc(title)}: abrir detalle"`, `tile ${toneName}`);
+}
+
+function personSummary(d, list) {
+  const p = d.person;
+  const has = (key) => list.some(([tab]) => tab === key);
+  const due = p.dueCents; const paid = p.paidNetCents;
+  const entitled = d.participations.filter(isEntitled);
+  const registered = d.participations.filter((part) => part.attendanceState === 'registered');
+  const activities = new Map(d.activities.map((row) => [row._id, row]));
+  const rooms = new Map(d.rooms.map((row) => [row._id, row]));
+  const tiles = [];
+  if (has('pagos')) {
+    if (p.pendingCents > 0) tiles.push(personTile('pagos', 'Pagos', esc(money(p.pendingCents)), `pendiente · cobrado ${esc(money(paid))} de ${esc(money(due))}`, bar(paid ?? 0, due ?? 0, 'ok'), 'alert'));
+    else if (p.refundPendingCents > 0) tiles.push(personTile('pagos', 'Pagos', esc(money(p.refundPendingCents)), 'devolución pendiente', '', 'alert'));
+    else tiles.push(personTile('pagos', 'Pagos', due > 0 ? 'Al día' : 'Sin importe', due > 0 ? `cobrado ${esc(money(paid))}` : 'sin importes por pagar', due > 0 ? bar(paid ?? 0, due, 'ok') : ''));
+  } else if (p.isTeam || p.isGuest) tiles.push(`<div class="tile static"><span class="kpi-title">Pagos</span><strong>Sin importe</strong><small>${p.isGuest ? 'Invitado' : 'Equipo'}: no tiene nada que pagar</small></div>`);
+  if (has('programa')) {
+    const byType = programTypes.map((type) => [type.label, entitled.filter((part) => type.categories.includes(activities.get(ref(part.activityRef))?.category || 'other')).length]).filter(([, count]) => count > 0);
+    tiles.push(personTile('programa', 'Programa', `${entitled.length} ${entitled.length === 1 ? 'actividad' : 'actividades'}`, byType.map(([label, count]) => `${esc(label)} ${count}`).join(' · ')));
+  }
+  if (has('asistencias')) tiles.push(personTile('asistencias', 'Asistencias', `${registered.length} de ${d.participations.length}`, 'con asistencia registrada', bar(registered.length, d.participations.length, 'info')));
+  if (has('alojamiento')) {
+    const stay = d.stays[0]; const room = rooms.get(ref(stay.roomRef));
+    tiles.push(personTile('alojamiento', 'Alojamiento', esc(room?.unitCode || 'Unidad'), d.stays.length > 1 ? `${d.stays.length} estancias` : `${esc(date(stay.checkInDate))} → ${esc(date(stay.checkOutDate))}`));
+  }
+  const notes = [
+    p.dataIssueDetail ? ['Datos por revisar', p.dataIssueDetail, 'bad'] : null,
+    p.dietaryKnown && p.dietaryNotes ? ['Alimentación', p.dietaryNotes, 'warn'] : null,
+    p.operationNote ? ['Nota operativa', p.operationNote, 'info'] : null
+  ].filter(Boolean);
+  return `<div class="tiles">${tiles.join('')}</div>${notes.length ? `<div class="notes">${notes.map(([title, text, toneName]) => `<div class="note ${toneName}"><strong>${esc(title)}</strong><span>${esc(text)}</span></div>`).join('')}</div>` : ''}`;
+}
+
+function personPayments(d) {
+  const p = d.person;
+  const payments = new Map(d.payments.map((row) => [row._id, row]));
+  const paid = p.paidNetCents; const due = p.dueCents;
+  return `<div class="balance"><div class="balance-main ${p.pendingCents > 0 ? 'owes' : 'ok'}"><span>Pendiente</span><strong>${esc(money(p.pendingCents))}</strong></div><div class="balance-bar">${stackedBar([{ value: paid || 0, tone: 'ok' }, { value: p.pendingCents || 0, tone: 'bad' }])}<div class="balance-legend"><span><i class="swatch c-ok"></i>Cobrado neto ${esc(money(paid))}</span><span><i class="swatch c-bad"></i>Pendiente ${esc(money(p.pendingCents))}</span><span>Exigible ${esc(money(due))}</span></div></div></div>${facts(p, ['eventDueCents', 'hotelDueCents', 'advanceNetCents', 'eventPaidNetCents', 'hotelDirectPaidCents', 'overpaidCents', 'refundPendingCents'], { compact: true })}
+${d.payments.length ? `<div class="detail-section"><h3>Movimientos económicos</h3><ul class="timeline">${d.payments.map((pay) => `<li><span class="tl-date">${esc(date(pay.paymentDate || pay.occurredAt))}</span><span class="tl-main"><strong>${esc(pay.paymentCode || 'Movimiento')}</strong><small>${esc(display('method', pay.method))} · ${esc(display('destination', pay.destination))}${pay.payerName ? ` · ${esc(pay.payerName)}` : ''}</small></span><span class="tl-amount">${esc(money(pay.amountCents))}</span>${pay.state && pay.state !== 'valid' ? pill('state', pay.state) : ''}</li>`).join('')}</ul></div>` : ''}
+${d.allocations.length ? `<div class="detail-section"><h3>Parte imputada a esta persona</h3><ul class="timeline">${d.allocations.map((alloc) => `<li><span class="tl-date">${esc(display('destination', alloc.destination))}</span><span class="tl-main"><strong>${esc(payments.get(ref(alloc.paymentRef))?.paymentCode || 'Movimiento')}</strong></span><span class="tl-amount">${esc(money(alloc.amountCents))}</span></li>`).join('')}</ul></div>` : ''}`;
+}
+
+// Lo que le corresponde a esta persona, por jornada y sin mezclar asistencias.
+function personProgram(d) {
+  const activities = new Map(d.activities.map((row) => [row._id, row]));
+  const rows = d.participations.filter(isEntitled).map((part) => ({ part, act: activities.get(ref(part.activityRef)) })).sort((x, y) => String(x.act?.startsAt || x.act?.eventDate || '').localeCompare(String(y.act?.startsAt || y.act?.eventDate || '')) || String(x.act?.name || '').localeCompare(String(y.act?.name || ''), 'es'));
+  const days = new Map();
+  for (const row of rows) { const day = row.act?.eventDate || 'sin-fecha'; if (!days.has(day)) days.set(day, []); days.get(day).push(row); }
+  return `<div class="day-groups">${[...days].map(([day, items]) => `<section class="day-group"><h3>${day === 'sin-fecha' ? 'Sin fecha' : esc(dayLabel(day, true))}<small>${items.length} ${items.length === 1 ? 'actividad' : 'actividades'}</small></h3><ul class="timeline">${items.map(({ part, act }) => `<li><span class="tl-date">${act?.timeConfirmed ? esc(time(act.startsAt)) : 'Por confirmar'}</span><span class="tl-main"><strong>${esc(act?.name || part.title || 'Actividad')}</strong><small>${esc(display('category', act?.category))}${act?.venue ? ` · ${esc(act.venue)}` : ''}</small></span>${part.entitlement === 'extra' ? pill('entitlement', 'extra') : ''}</li>`).join('')}</ul></section>`).join('')}</div>`;
+}
+
+function personAttendance(d) {
+  const activities = new Map(d.activities.map((row) => [row._id, row]));
+  const rows = d.participations.map((part) => ({ part, act: activities.get(ref(part.activityRef)) })).sort((x, y) => String(x.act?.startsAt || x.act?.eventDate || '').localeCompare(String(y.act?.startsAt || y.act?.eventDate || '')));
+  const registered = rows.filter(({ part }) => part.attendanceState === 'registered').length;
+  const outside = rows.filter(({ part }) => !isEntitled(part) && part.attendanceState === 'registered').length;
+  return `<div class="pill-row"><span class="pill ok">${registered} registradas</span><span class="pill neutral">${rows.length - registered} sin registro</span>${outside ? `<span class="pill warn">${outside} fuera de derecho</span>` : ''}</div>
+<div class="scroll auto" tabindex="0" role="region" aria-label="Asistencias de la persona"><table class="record-table"><caption class="sr-only">Asistencias</caption><thead><tr><th scope="col">Actividad</th><th scope="col">Jornada</th><th scope="col">Derecho</th><th scope="col">Asistencia</th></tr></thead><tbody>${rows.map(({ part, act }) => `<tr><td><span class="cell-label">Actividad</span><strong>${esc(act?.name || part.title || 'Actividad')}</strong>${part.needsReview ? '<span class="record-sub inline">Revisar</span>' : ''}</td><td><span class="cell-label">Jornada</span>${esc(act ? dayLabel(act.eventDate) : 'Sin dato')}</td><td><span class="cell-label">Derecho</span>${pill('entitlement', part.entitlement || 'none')}</td><td><span class="cell-label">Asistencia</span>${pill('attendanceState', part.attendanceState || 'unknown')}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function personStays(d) {
+  const rooms = new Map(d.rooms.map((row) => [row._id, row]));
+  const nights = (stay) => (stay.checkInDate && stay.checkOutDate ? Math.round((Date.parse(`${stay.checkOutDate}T00:00:00Z`) - Date.parse(`${stay.checkInDate}T00:00:00Z`)) / 86400000) : null);
+  return `<ul class="timeline">${d.stays.map((stay) => { const room = rooms.get(ref(stay.roomRef)); const n = nights(stay); return `<li><span class="tl-date">${esc(date(stay.checkInDate))}</span><span class="tl-main"><strong>${esc(room?.unitCode || 'Unidad')}${room?.hotelRoomNumber ? ` · hotel ${esc(room.hotelRoomNumber)}` : ''}</strong><small>Salida ${esc(date(stay.checkOutDate))}${n ? ` · ${n} noches` : ''}${stay.bedLabel ? ` · ${esc(stay.bedLabel)}` : ''}${room?.roomType ? ` · ${esc(display('roomType', room.roomType))}` : ''}</small></span>${pill('state', stay.state || 'unknown')}</li>`; }).join('')}</ul>`;
+}
+
+function personReservation(d) {
+  const p = d.person;
+  const others = d.people.filter((person) => person._id !== p._id);
+  return `<h3>Reserva ${esc(d.reservation.reservationCode)}</h3>${facts(d.reservation, ['packageName', 'sourceChannel', 'registeredAt', 'sourceState', 'webId'], { compact: true })}
+${others.length ? `<div class="detail-section"><h3>Otras personas de la reserva</h3><div class="chips">${others.map((person) => button('person-ref', `${esc(person.fullName)} · ${esc(person.personCode)}${person.pendingCents > 0 ? ` · debe ${esc(money(person.pendingCents))}` : ''}`, `data-id="${esc(person._id)}"`, 'chip')).join('')}</div></div>` : ''}
+<div class="detail-section"><h3>Contacto</h3>${facts(p, ['email', 'phone', 'country', 'nationality', 'city', 'dietaryKnown', 'dietaryNotes', 'operationNote'], { compact: true })}</div>`;
 }
 
 export function personView(state) {
   const d = state.detail;
   const p = d.person;
-  const activities = new Map(d.activities.map((row) => [row._id, row]));
-  const rooms = new Map(d.rooms.map((row) => [row._id, row]));
-  const payments = new Map(d.payments.map((row) => [row._id, row]));
-  const due = p.dueCents; const paid = p.paidNetCents;
   const tel = safeTel(p.phone);
-  const others = d.people.filter((person) => person._id !== p._id);
-  const nights = (stay) => (stay.checkInDate && stay.checkOutDate ? Math.round((Date.parse(`${stay.checkOutDate}T00:00:00Z`) - Date.parse(`${stay.checkInDate}T00:00:00Z`)) / 86400000) : null);
-  return `<div class="stack"><div class="crumbs">${button('back', '← Volver a la consulta')}${button('print', `${icon('print')}<span>Imprimir ficha</span>`, '', 'ghost')}</div>
-<section class="panel person-head"><div class="avatar lg role-${esc(p.danceRole || 'unknown')}" aria-hidden="true">${esc(initials(p.fullName))}</div><div class="person-id"><div class="eyebrow">Ficha de consulta</div><h2>${esc(p.fullName)}</h2><p>${esc(p.personCode)} · ${esc(d.reservation.reservationCode)}</p><div class="pill-row">${pill('state', p.state)}${p.paymentState ? pill('paymentState', p.paymentState) : ''}${p.arrivalState ? `<span class="pill ${tone(p.arrivalState)}">Llegada: ${esc(display('arrivalState', p.arrivalState).toLowerCase())}</span>` : ''}${p.packageName ? `<span class="pill neutral">${esc(p.packageName)}</span>` : ''}${p.danceRole ? `<span class="pill neutral">${esc(display('danceRole', p.danceRole))}</span>` : ''}${p.isTeam ? '<span class="pill info">Equipo</span>' : ''}${p.isGuest ? '<span class="pill info">Invitado</span>' : ''}${p.hasDataIssues ? '<span class="pill bad">Datos por revisar</span>' : ''}</div>${p.dataIssueDetail ? `<p class="small">${esc(p.dataIssueDetail)}</p>` : ''}</div><div class="contact-actions">${tel ? `<a class="action-link" href="tel:${esc(tel)}">${icon('phone')}<span>Llamar</span></a>` : ''}${p.email ? `<a class="action-link" href="mailto:${esc(p.email)}">${icon('mail')}<span>Escribir</span></a>` : ''}</div></section>
-<section class="panel"><div class="panel-head"><h2>Pagos y saldo individual</h2></div><div class="balance"><div class="balance-main ${p.pendingCents > 0 ? 'owes' : 'ok'}"><span>Pendiente</span><strong>${esc(money(p.pendingCents))}</strong></div><div class="balance-bar">${stackedBar([{ value: paid || 0, tone: 'ok' }, { value: p.pendingCents || 0, tone: 'bad' }])}<div class="balance-legend"><span><i class="swatch c-ok"></i>Cobrado neto ${esc(money(paid))}</span><span><i class="swatch c-bad"></i>Pendiente ${esc(money(p.pendingCents))}</span><span>Exigible ${esc(money(due))}</span></div></div></div>${facts(p, ['eventDueCents', 'hotelDueCents', 'advanceNetCents', 'eventPaidNetCents', 'hotelDirectPaidCents', 'overpaidCents', 'refundPendingCents'])}
-<div class="detail-section"><h3>Movimientos económicos</h3>${d.payments.length ? `<ul class="timeline">${d.payments.map((pay) => `<li><span class="tl-date">${esc(date(pay.paymentDate || pay.occurredAt))}</span><span class="tl-main"><strong>${esc(pay.paymentCode || 'Movimiento')}</strong><small>${esc(display('method', pay.method))} · ${esc(display('destination', pay.destination))}${pay.payerName ? ` · ${esc(pay.payerName)}` : ''}</small></span><span class="tl-amount">${esc(money(pay.amountCents))}</span>${pay.state && pay.state !== 'valid' ? pill('state', pay.state) : ''}</li>`).join('')}</ul>` : '<p class="small">Sin movimientos relacionados en esta copia.</p>'}</div>
-<div class="detail-section"><h3>Parte imputada a esta persona</h3>${d.allocations.length ? `<ul class="timeline">${d.allocations.map((alloc) => `<li><span class="tl-date">${esc(display('destination', alloc.destination))}</span><span class="tl-main"><strong>${esc(payments.get(ref(alloc.paymentRef))?.paymentCode || 'Movimiento')}</strong></span><span class="tl-amount">${esc(money(alloc.amountCents))}</span></li>`).join('')}</ul>` : '<p class="small">Sin imputaciones en esta copia.</p>'}</div></section>
-<div class="grid-2"><section class="panel"><h2>Programa y asistencia</h2>${d.participations.length ? `<ul class="timeline">${d.participations.map((part) => { const act = activities.get(ref(part.activityRef)); return `<li><span class="tl-date">${esc(act ? date(act.eventDate) : '')}</span><span class="tl-main"><strong>${esc(act?.name || part.title || 'Actividad')}</strong><small>Derecho: ${esc(display('entitlement', part.entitlement))}${part.needsReview ? ' · Revisar' : ''}</small></span>${pill('attendanceState', part.attendanceState || 'unknown')}</li>`; }).join('')}</ul>` : '<p class="small">Sin participaciones en esta copia.</p>'}</section>
-<section class="panel"><h2>Alojamiento</h2>${d.stays.length ? `<ul class="timeline">${d.stays.map((stay) => { const room = rooms.get(ref(stay.roomRef)); const n = nights(stay); return `<li><span class="tl-date">${esc(date(stay.checkInDate))}</span><span class="tl-main"><strong>${esc(room?.unitCode || 'Unidad')}${room?.hotelRoomNumber ? ` · hotel ${esc(room.hotelRoomNumber)}` : ''}</strong><small>Salida ${esc(date(stay.checkOutDate))}${n ? ` · ${n} noches` : ''}${stay.bedLabel ? ` · ${esc(stay.bedLabel)}` : ''}</small></span>${pill('state', stay.state || 'unknown')}</li>`; }).join('')}</ul>` : '<p class="small">Sin estancias en esta copia.</p>'}</section></div>
-<section class="panel"><h2>Reserva ${esc(d.reservation.reservationCode)}</h2>${facts(d.reservation, ['packageName', 'sourceChannel', 'registeredAt', 'sourceState', 'webId'])}<div class="detail-section"><h3>Otras personas de la reserva</h3>${others.length ? `<div class="chips">${others.map((person) => button('person-ref', `${esc(person.fullName)} · ${esc(person.personCode)}${person.pendingCents > 0 ? ` · debe ${esc(money(person.pendingCents))}` : ''}`, `data-id="${esc(person._id)}"`, 'chip')).join('')}</div>` : '<p class="small">No hay otras personas en esta reserva.</p>'}</div></section>
-<section class="panel"><details><summary>Contacto y notas operativas</summary>${facts(p, ['email', 'phone', 'dietaryKnown', 'dietaryNotes', 'operationNote', 'country', 'nationality', 'city'])}</details></section></div>`;
+  const list = personTabList(d);
+  const current = list.some(([tab]) => tab === state.ptab) ? state.ptab : 'resumen';
+  const body = { resumen: () => personSummary(d, list), pagos: () => personPayments(d), programa: () => personProgram(d), asistencias: () => personAttendance(d), alojamiento: () => personStays(d), reserva: () => personReservation(d) }[current]();
+  const titles = { resumen: 'Resumen', pagos: 'Pagos y saldo individual', programa: 'Programa: lo que le corresponde', asistencias: 'Registro de asistencia', alojamiento: 'Alojamiento', reserva: 'Reserva y contacto' };
+  return `<div class="stack person-page"><div class="crumbs">${button('back', '← Volver a la consulta')}${button('print', `${icon('print')}<span>Imprimir ficha</span>`, '', 'ghost')}</div>
+<section class="panel person-head"><div class="avatar lg role-${esc(p.danceRole || 'unknown')}" aria-hidden="true">${esc(initials(p.fullName))}</div><div class="person-id"><div class="eyebrow">Ficha de consulta</div><h2>${esc(p.fullName)}</h2><p>${esc(p.personCode)} · ${esc(d.reservation.reservationCode)}</p><div class="pill-row">${pill('state', p.state)}${p.paymentState ? pill('paymentState', p.paymentState) : ''}${p.arrivalState ? `<span class="pill ${tone(p.arrivalState)}">Llegada: ${esc(display('arrivalState', p.arrivalState).toLowerCase())}</span>` : ''}${p.packageName ? `<span class="pill neutral">${esc(p.packageName)}</span>` : ''}${p.danceRole ? `<span class="pill neutral">${esc(display('danceRole', p.danceRole))}</span>` : ''}${p.isTeam ? '<span class="pill info">Equipo</span>' : ''}${p.isGuest ? '<span class="pill info">Invitado</span>' : ''}${p.hasDataIssues ? '<span class="pill bad">Datos por revisar</span>' : ''}</div></div><div class="contact-actions">${tel ? `<a class="action-link" href="tel:${esc(tel)}">${icon('phone')}<span>Llamar</span></a>` : ''}${p.email ? `<a class="action-link" href="mailto:${esc(p.email)}">${icon('mail')}<span>Escribir</span></a>` : ''}</div></section>
+<section class="panel person-body"><div class="tabs" role="group" aria-label="Secciones de la ficha">${list.map(([tab, label]) => button('ptab', esc(label), `data-tab="${tab}" aria-pressed="${tab === current}"`)).join('')}</div><h3 class="sr-only">${esc(titles[current])}</h3><div class="person-pane">${body}</div></section></div>`;
 }
 
 export function roomView(state) {

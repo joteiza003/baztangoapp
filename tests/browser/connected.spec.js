@@ -17,7 +17,7 @@ test('rejects incorrect password, reads filters and detail, and clears session o
   expect(queries.at(-1).search).toBe('inigo');
   await page.getByRole('button',{name:/Ver ficha de/}).click();
   await expect(page.getByRole('heading',{name:person.fullName})).toBeVisible();
-  await page.getByText('Contacto y notas operativas',{exact:true}).click();
+  await page.getByRole('button',{name:'Reserva y contacto'}).click();
   await expect(page.getByText('ficticio@example.invalid',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'← Volver a la consulta'}).click();
   await expect(page.getByLabel('Buscar en personas')).toHaveValue('Iñigo');
@@ -33,8 +33,9 @@ test('all sections, activity groups, room nights and expense links work with fic
   await page.screenshot({path:'test-results/resumen-ficticio.png',fullPage:true});
   await page.getByRole('button',{name:'Programa',exact:true}).first().click();
   await page.getByRole('button',{name:/Consultar Cóctel/}).click();
-  await expect(page.getByRole('button',{name:/Con derecho · 1/})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Participantes · 1/})).toBeVisible();
   await expect(page.getByRole('button',{name:/Ver ficha de/})).toBeVisible();
+  await page.getByRole('button',{name:'Asistencias · 0/1'}).click();
   await page.getByRole('button',{name:/Asistencia registrada · 0/}).click();
   await expect(page.getByText('0 personas en este grupo')).toBeVisible();
   await page.getByRole('button',{name:'Alojamiento',exact:true}).first().click();
