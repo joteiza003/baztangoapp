@@ -42,3 +42,15 @@ export function csvCell(value) {
   const text = String(value ?? '');
   return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`;
 }
+
+// Reparto Baztango (evento) / Hotel de una persona. Lo cobrado en destino hotel = cobrado neto total − cobrado neto en el evento.
+export function splitFinance(p) {
+  const { eventDueCents: eventDue, hotelDueCents: hotelDue, eventPaidNetCents: eventPaid, paidNetCents: paid } = p || {};
+  if (![eventDue, hotelDue, eventPaid, paid].every(Number.isSafeInteger)) return null;
+  const hotelPaid = paid - eventPaid;
+  return { event: { due: eventDue, paid: eventPaid, pending: Math.max(eventDue - eventPaid, 0) }, hotel: { due: hotelDue, paid: hotelPaid, pending: Math.max(hotelDue - hotelPaid, 0) } };
+}
+export function withSplit(row) {
+  const s = splitFinance(row);
+  return { ...row, paidEventCents: s ? s.event.paid : null, pendingEventCents: s ? s.event.pending : null, paidHotelCents: s ? s.hotel.paid : null, pendingHotelCents: s ? s.hotel.pending : null };
+}

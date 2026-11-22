@@ -1,7 +1,7 @@
 import { createService, normalize } from '../../wix/service.js';
 
 export const fixturePassword = 'solo-pruebas-ficticias-32-caracteres';
-export const person = {_id:'p1',fullName:'Iñigo Apellido ficticio de prueba con un nombre extraordinariamente largo',personCode:'TEST-P-001',state:'accepted',packageName:'Completo',danceRole:'leader',arrivalState:'registered',dueCents:20000,paidNetCents:10000,pendingCents:10000,reservationRef:'r1',email:'ficticio@example.invalid',dietaryKnown:false};
+export const person = {_id:'p1',fullName:'Iñigo Apellido ficticio de prueba con un nombre extraordinariamente largo',personCode:'TEST-P-001',state:'accepted',packageName:'Completo',danceRole:'leader',arrivalState:'registered',dueCents:20000,paidNetCents:10000,pendingCents:10000,eventDueCents:12000,hotelDueCents:8000,eventPaidNetCents:7000,reservationRef:'r1',email:'ficticio@example.invalid',dietaryKnown:false};
 const activity = {_id:'a1',name:'Cóctel ficticio de bienvenida',eventDate:'2026-11-26',category:'meal',timeConfirmed:false};
 const activity2 = {_id:'a2',name:'Milonga ficticia',eventDate:'2026-11-27',category:'milonga',timeConfirmed:false};
 const room = {_id:'h1',unitCode:'APT-TEST',hotelRoomNumber:'001',roomType:'apartment',capacity:5,isAvailable:true};
@@ -18,7 +18,7 @@ export async function installApi(page) {
     overview:async()=>{
       return {
         totals:{people:3,accepted:2,cancelled:1,review:0,arrived:1,housed:1,team:0,guests:0},
-        finance:{dueCents:30000,paidNetCents:20000,pendingCents:10000,refundPendingCents:0,overpaidCents:0,withDebt:1,withRefund:0},
+        finance:{dueCents:30000,paidNetCents:20000,pendingCents:10000,refundPendingCents:0,overpaidCents:0,withDebt:1,withRefund:0,event:{dueCents:20000,paidNetCents:15000,pendingCents:5000},hotel:{dueCents:10000,paidNetCents:5000,pendingCents:5000},splitUnknown:0},
         byPaymentState:[{value:'partial',count:1},{value:'settled',count:1}],byRole:[{value:'leader',count:1},{value:'follower',count:1}],byPackage:[{value:'Completo',count:2}],byCountry:[{value:'ES',count:2}],
         arrivalsByDate:[{value:'2026-11-26',count:1}],debtors:[{_id:'p1',fullName:person.fullName,personCode:person.personCode,packageName:'Completo',pendingCents:10000,paymentState:'partial'}],
         program:[{...activity,startsAt:null,entitled:2,registered:1,missing:1,issues:0}],

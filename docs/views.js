@@ -1,5 +1,5 @@
-import { sections, resources, tabs, labels, values, enums, booleanFields, noSearch, quickChips, programTypes, packKey } from './catalogue.js?v=1.2.0';
-import { esc, ref, money, moneyShort, number, percent, date, time, dayLabel, display, initials, tone, pill, isPillField, button, safeTel } from './format.js?v=1.2.0';
+import { sections, resources, tabs, labels, values, enums, booleanFields, noSearch, quickChips, programTypes, packKey, saldosColumns } from './catalogue.js?v=1.2.0';
+import { esc, ref, money, moneyShort, number, percent, date, time, dayLabel, display, initials, tone, pill, isPillField, button, safeTel, splitFinance, withSplit } from './format.js?v=1.2.0';
 import { bar, stackedBar, donut, ring, legend } from './charts.js?v=1.2.0';
 
 const attr = (value) => esc(JSON.stringify(value));
@@ -41,8 +41,8 @@ export function dashboardView(state) {
     kpi({ title: 'Aceptados activos', value: number(t.accepted), sub: `${number(t.cancelled)} bajas · ${number(t.team)} equipo · ${number(t.guests)} invitados`, go: { route: 'clientes', filters: { state: 'accepted' } } }),
     kpi({ title: 'Llegada general', value: `${number(t.arrived)} / ${number(t.accepted)}`, sub: `${percent(t.arrived, t.accepted) ?? 0}% de las personas aceptadas`, barHtml: bar(t.arrived, t.accepted, 'ok'), go: { route: 'clientes', filters: { state: 'accepted', arrivalState: 'registered' } } }),
     kpi({ title: 'Con alojamiento', value: `${number(t.housed)} / ${number(t.accepted)}`, sub: 'personas con estancia vigente', barHtml: bar(t.housed, t.accepted, 'info'), go: { route: 'alojamiento', resource: 'habitaciones' } }),
-    kpi({ title: 'Cobrado neto', value: moneyShort(paid), sub: due === null ? 'Exigible sin dato' : `de ${moneyShort(due)} exigibles`, barHtml: bar(paid ?? 0, due ?? 0, 'ok'), go: { route: 'pagos', filters: { state: 'accepted' } } }),
-    kpi({ title: 'Pendiente de cobro', value: moneyShort(f.pendingCents), sub: `${number(f.withDebt)} personas con deuda`, toneName: f.pendingCents > 0 ? 'alert' : '', go: { route: 'pagos', filters: { state: 'accepted' } } })
+    kpi({ title: 'Cobrado neto', value: moneyShort(paid), sub: f.event ? `Baztango ${moneyShort(f.event.paidNetCents)} · Hotel ${moneyShort(f.hotel.paidNetCents)}` : due === null ? 'Exigible sin dato' : `de ${moneyShort(due)} exigibles`, barHtml: bar(paid ?? 0, due ?? 0, 'ok'), go: { route: 'pagos', filters: { state: 'accepted' } } }),
+    kpi({ title: 'Pendiente de cobro', value: moneyShort(f.pendingCents), sub: f.event ? `Baztango ${moneyShort(f.event.pendingCents)} · Hotel ${moneyShort(f.hotel.pendingCents)}` : `${number(f.withDebt)} personas con deuda`, toneName: f.pendingCents > 0 ? 'alert' : '', go: { route: 'pagos', filters: { state: 'accepted' } } })
   ];
   const states = o.byPaymentState.map((row) => ({ value: row.count, tone: `c-${tone(row.value)}`, key: row.value, label: display('paymentState', row.value) }));
   const acceptedTotal = states.reduce((sum, row) => sum + row.value, 0);
@@ -59,7 +59,7 @@ export function dashboardView(state) {
   const todayDay = today();
   const programDays = [...new Set(o.program.map((activity) => activity.eventDate))].filter(Boolean);
   const programFocus = programDays.includes(todayDay) ? todayDay : programDays.find((day) => day > todayDay) || programDays[0];
-  const focusActivities = o.program.filter((activity) => activity.eventDate === programFocus);
+  const focusActivities = o.program.filter((activity) => activity.eventDate === programFocus).sort(chrono);
   const maxAssigned = Math.max(...o.lodging.nights.map((night) => night.assigned), 1);
   const nightsChart = o.lodging.nights.length ? `<div class="cols" role="list" aria-label="Personas alojadas por noche">${o.lodging.nights.map((night) => {
     const base = night.capacity > 0 ? night.capacity : maxAssigned;
@@ -70,8 +70,8 @@ export function dashboardView(state) {
   const arrivalsChart = o.arrivalsByDate.length ? (() => { const max = Math.max(...o.arrivalsByDate.map((row) => row.count), 1); return `<div class="cols compact" role="list" aria-label="Llegadas registradas por día">${o.arrivalsByDate.map((row) => `<div role="listitem" class="col static" aria-label="${esc(dayLabel(row.value))}: ${row.count} llegadas"><span class="col-val">${row.count}</span><span class="col-track"><span class="col-fill ok h-${percent(row.count, max)}"></span></span><span class="col-label">${esc(dayLabel(row.value).replace(/^(\S+)\s(\d+).*$/, '$1 $2'))}</span></div>`).join('')}</div>`; })() : '<p class="small">Sin llegadas registradas todavía.</p>';
   const roleRows = (rows, total, toneName, field) => rows.map((row) => `<div class="meter-row"><span>${esc(field ? display(field, row.value) : row.value)}</span><strong>${number(row.count)}</strong>${bar(row.count, total, toneName)}</div>`).join('') || '<p class="small">Sin datos.</p>';
   return `<div class="stack"><div class="metrics five">${kpis.join('')}</div>
-<div class="grid-3">
-<section class="panel"><div class="panel-head"><div><h2>Cobros</h2><p>Todas las personas de la copia, incluidas bajas.</p></div></div>${stackedBar([{ value: paid || 0, tone: 'ok' }, { value: f.pendingCents || 0, tone: 'bad' }])}<dl class="money-list"><div><dt><span class="swatch c-ok"></span>Cobrado neto</dt><dd>${esc(money(paid))}</dd></div><div><dt><span class="swatch c-bad"></span>Pendiente de cobro</dt><dd>${esc(money(f.pendingCents))}</dd></div><div><dt>Exigible total</dt><dd>${esc(money(due))}</dd></div><div><dt>Devolución pendiente</dt><dd>${esc(money(f.refundPendingCents))}</dd></div><div><dt>Exceso de cobro</dt><dd>${esc(money(f.overpaidCents))}</dd></div></dl>${button('nav', 'Ver saldos por persona →', 'data-route="pagos"', 'link-button')}</section>
+${cobrosPanel(f, paid, due)}
+<div class="grid-2">
 <section class="panel"><div class="panel-head"><div><h2>Situación económica</h2><p>Personas aceptadas por estado de pago.</p></div></div><div class="donut-row">${donut(states, { label: 'Personas aceptadas por situación económica', center: String(acceptedTotal), sub: 'personas' })}${legend(states.map((row) => ({ html: goButton('clientes', 'personas', { state: 'accepted', paymentState: row.key }, `<span class="swatch ${row.tone}"></span><span class="legend-name">${esc(row.label)}</span><strong>${row.value}</strong>`, 'legend-link', `${row.label}: ${row.value} personas. Ver en clientes`) })))}</div></section>
 <section class="panel"><div class="panel-head"><div><h2>Llegadas</h2><p>Registro de llegada general.</p></div></div><div class="donut-row">${ring(t.arrived, t.accepted, { label: `${t.arrived} de ${t.accepted} personas han llegado` })}<div><strong class="big">${number(t.arrived)}</strong><p class="small">de ${number(t.accepted)} aceptadas<br>${number(Math.max(t.accepted - t.arrived, 0))} pendientes</p></div></div>${arrivalsChart}<p class="small">Las llegadas registradas no indican ocupación en vivo.</p></section>
 </div>
@@ -80,10 +80,19 @@ export function dashboardView(state) {
 <section class="panel"><div class="panel-head"><div><h2>Alojamiento por noche</h2><p>Personas con estancia por noche${o.lodging.nights[0]?.capacity ? ` · ${number(o.lodging.nights[0].capacity)} plazas en servicio` : ''}.</p></div>${button('nav', 'Ver unidades', 'data-route="alojamiento"', 'link-button')}</div>${nightsChart}</section>
 </div>
 <div class="grid-2">
-<section class="panel"><div class="panel-head"><div><h2>Mayores pendientes</h2><p>Personas aceptadas con más importe por cobrar.</p></div>${button('filter-go', 'Ver todos', `data-route="pagos" data-resource="personas" data-filters="${attr({ state: 'accepted' })}"`, 'link-button')}</div>${o.debtors.length ? `<ol class="rank">${o.debtors.map((person, index) => `<li>${button('person-ref', `<span class="rank-n">${index + 1}</span><span class="rank-name"><strong>${esc(person.fullName)}</strong><small>${esc(person.personCode || '')}${person.packageName ? ` · ${esc(person.packageName)}` : ''}</small></span><span class="rank-amount">${esc(money(person.pendingCents))}</span>`, `data-id="${esc(person._id)}" aria-label="Ver ficha de ${esc(person.fullName)}"`, 'rank-link')}</li>`).join('')}</ol>` : '<p>No hay importes pendientes.</p>'}</section>
+<section class="panel"><div class="panel-head"><div><h2>Mayores pendientes</h2><p>Personas aceptadas con más importe por cobrar.</p></div>${button('filter-go', 'Ver todos', `data-route="pagos" data-resource="personas" data-filters="${attr({ state: 'accepted' })}"`, 'link-button')}</div>${o.debtors.length ? `<ol class="rank">${o.debtors.map((person, index) => `<li>${button('person-ref', `<span class="rank-n">${index + 1}</span><span class="rank-name"><strong>${esc(person.fullName)}</strong><small>${esc(person.personCode || '')}${person.packageName ? ` · ${esc(person.packageName)}` : ''}</small></span><span class="rank-amount">${esc(money(person.pendingCents))}${splitLine(person)}</span>`, `data-id="${esc(person._id)}" aria-label="Ver ficha de ${esc(person.fullName)}"`, 'rank-link')}</li>`).join('')}</ol>` : '<p>No hay importes pendientes.</p>'}</section>
 <section class="panel"><div class="panel-head"><div><h2>Necesita revisión</h2><p>Condiciones informadas por la copia.</p></div></div>${attention.length ? `<ul class="attention">${attention.map(([count, text, route, resource, filters]) => `<li>${goButton(route, resource, filters, `<span class="attn-count">${number(count)}</span><span>${esc(text)}</span><span aria-hidden="true">→</span>`, 'attn-link')}</li>`).join('')}</ul>` : '<p class="ok-note">Todo en orden: no hay incidencias informadas en esta copia.</p>'}</section>
 </div>
 <section class="panel"><div class="panel-head"><div><h2>Perfil del grupo</h2><p>Reparto de las personas aceptadas.</p></div></div><div class="grid-3 flat"><div><h3>Rol</h3>${roleRows(o.byRole, t.accepted, 'brand', 'danceRole')}</div><div><h3>Paquete</h3>${roleRows(o.byPackage, t.accepted, 'info')}</div><div><h3>País / región</h3>${roleRows(o.byCountry, t.accepted, 'warn')}</div></div></section></div>`;
+}
+
+const pendingSplitText = (p) => { const s = splitFinance(p); return s ? `Baztango ${money(s.event.pending)} · Hotel ${money(s.hotel.pending)}` : ''; };
+const splitLine = (p) => { const text = pendingSplitText(p); return text ? `<small>${esc(text)}</small>` : ''; };
+
+function cobrosPanel(f, paid, due) {
+  const col = (title, s) => `<div><h3>${title}</h3>${stackedBar([{ value: Math.max(s.paidNetCents, 0), tone: 'ok' }, { value: s.pendingCents, tone: 'bad' }])}<dl class="money-list"><div><dt>Exigible</dt><dd>${esc(money(s.dueCents))}</dd></div><div><dt><span class="swatch c-ok"></span>Cobrado neto</dt><dd>${esc(money(s.paidNetCents))}</dd></div><div><dt><span class="swatch c-bad"></span>Pendiente</dt><dd>${esc(money(s.pendingCents))}</dd></div></dl></div>`;
+  const totals = `<div><h3>Total</h3>${stackedBar([{ value: paid || 0, tone: 'ok' }, { value: f.pendingCents || 0, tone: 'bad' }])}<dl class="money-list"><div><dt>Exigible total</dt><dd>${esc(money(due))}</dd></div><div><dt><span class="swatch c-ok"></span>Cobrado neto</dt><dd>${esc(money(paid))}</dd></div><div><dt><span class="swatch c-bad"></span>Pendiente</dt><dd>${esc(money(f.pendingCents))}</dd></div><div><dt>Devolución pendiente</dt><dd>${esc(money(f.refundPendingCents))}</dd></div><div><dt>Exceso de cobro</dt><dd>${esc(money(f.overpaidCents))}</dd></div></dl></div>`;
+  return `<section class="panel"><div class="panel-head"><div><h2>Cobros: Baztango y Hotel</h2><p>Todas las personas de la copia, incluidas bajas.${f.splitUnknown ? ` ${f.splitUnknown} personas sin desglose Baztango/Hotel no se reparten.` : ''}</p></div>${button('nav', 'Ver saldos por persona →', 'data-route="pagos"', 'link-button')}</div>${f.event ? `<div class="grid-3 flat">${col('Baztango', f.event)}${col('Hotel', f.hotel)}${totals}</div>` : `<div class="grid-3 flat">${totals}</div>`}</section>`;
 }
 
 function legacyDashboard(state) {
@@ -99,8 +108,8 @@ function agendaRow(activity) {
 
 export function financeSummary(state) {
   const f = state.overview?.finance || state.summary || {};
-  const items = [['Exigible total', f.dueCents ?? state.summary?.dueCents], ['Cobrado neto', f.paidNetCents ?? state.summary?.paidNetCents], ['Pendiente de cobro', f.pendingCents ?? state.summary?.pendingCents], ['Devolución pendiente', f.refundPendingCents ?? state.summary?.refundPendingCents]];
-  return `<div class="metrics strip" title="Alcance: todas las personas de la copia, incluidas bajas">${items.map(([title, value], index) => `<div class="kpi static ${index === 2 && value > 0 ? 'alert' : ''}"><span class="kpi-title">${title}</span><strong>${esc(money(value))}</strong></div>`).join('')}</div>`;
+  const items = [['Exigible total', f.dueCents ?? state.summary?.dueCents, 'dueCents'], ['Cobrado neto', f.paidNetCents ?? state.summary?.paidNetCents, 'paidNetCents'], ['Pendiente de cobro', f.pendingCents ?? state.summary?.pendingCents, 'pendingCents'], ['Devolución pendiente', f.refundPendingCents ?? state.summary?.refundPendingCents]];
+  return `<div class="metrics strip" title="Alcance: todas las personas de la copia, incluidas bajas">${items.map(([title, value, side], index) => `<div class="kpi static ${index === 2 && value > 0 ? 'alert' : ''}"><span class="kpi-title">${title}</span><strong>${esc(money(value))}</strong>${side && f.event ? `<small>Baztango ${esc(money(f.event[side]))} · Hotel ${esc(money(f.hotel[side]))}</small>` : ''}</div>`).join('')}</div>`;
 }
 
 function filterControl(state, current, field) {
@@ -134,7 +143,8 @@ export function sortRows(rows, sort) {
 export function listView(state, current) {
   const resource = state.resource;
   const data = state.data || { items: [], total: 0 };
-  const rows = sortRows(data.items, current.sort);
+  const saldos = state.route === 'pagos' && resource === 'personas';
+  const rows = sortRows(saldos ? data.items.map(withSplit) : data.items, current.sort);
   const chips = resource === 'personas' ? `<div class="chips" role="group" aria-label="Filtros rápidos">${quickChips.personas.map((chip) => button('chip', esc(chip.label), `data-chip="${chip.id}" aria-pressed="${chipActive(chip, current.filters)}"`, 'chip')).join('')}</div>` : '';
   const filterCount = Object.keys(current.filters).length;
   const unit = resource === 'personas' ? 'personas' : resource === 'solicitudes' ? 'solicitudes' : 'registros';
@@ -142,22 +152,22 @@ export function listView(state, current) {
   const order = `<label class="order"><span class="sr-only">Orden</span><select name="order"><option value="default" ${current.order === 'default' ? 'selected' : ''}>Orden de consulta</option><option value="name" ${current.order === 'name' ? 'selected' : ''}>Nombre / referencia</option><option value="pendingDesc" ${current.order === 'pendingDesc' ? 'selected' : ''}>Pendiente descendente</option><option value="date" ${current.order === 'date' ? 'selected' : ''}>Fecha</option></select></label>`;
   return `${state.route === 'pagos' && resource === 'personas' ? financeSummary(state) : ''}<section class="panel list-panel ${state.refreshing ? 'refreshing' : ''}" aria-busy="${state.refreshing ? 'true' : 'false'}"><div class="bar-row">${tabBar(state)}<div class="bar-tools"><span class="count" role="status">${number(data.total)} ${unit}</span>${button('export', `${icon('download')}<span>${state.exporting ? 'Exportando…' : 'Exportar CSV'}</span>`, `${state.exporting || !data.total ? 'disabled' : ''}`, 'ghost')}</div></div><h2 class="sr-only">${esc(resources[resource][0])}</h2>
 <form id="search-form" class="toolbar">${search}${order}<button type="submit" class="primary">Buscar</button>${chips}<details class="more-filters" ${filterCount > (resource === 'personas' ? 1 : 0) ? 'open' : ''}><summary>Más filtros ${filterCount ? `· ${filterCount} activos` : ''}</summary><div class="filter-grid">${resources[resource][2].filter((field) => field !== 'sourceState').map((field) => filterControl(state, current, field)).join('')}</div><div class="form-row"><button class="primary" type="submit">Aplicar filtros</button>${button('clear', 'Limpiar filtros')}</div></details></form>
-${rows.length ? table(resource, rows, current.sort) : `<div class="empty"><h2>Sin resultados</h2><p>No hay registros que coincidan con esta consulta.</p>${button('clear', 'Limpiar filtros')}</div>`}<div class="list-foot"><span>Pulsa una fila para abrir su ficha · pulsa una cabecera para ordenar</span><span>Importes y estados de la copia publicada</span></div></section>`;
+${rows.length ? table(resource, rows, current.sort, saldos ? saldosColumns : undefined) : `<div class="empty"><h2>Sin resultados</h2><p>No hay registros que coincidan con esta consulta.</p>${button('clear', 'Limpiar filtros')}</div>`}<div class="list-foot"><span>Pulsa una fila para abrir su ficha · pulsa una cabecera para ordenar</span><span>Importes y estados de la copia publicada</span></div></section>`;
 }
 
 function cell(resource, field, row, index) {
   const value = row[field];
   let html;
   if (isPillField(field, value)) html = pill(field, value);
-  else if (field === 'pendingCents' || field === 'cashDifferenceCents') html = `<span class="number ${Number.isSafeInteger(value) && value !== 0 ? (field === 'pendingCents' ? 'owes' : value < 0 ? 'owes' : 'warn-text') : ''}">${esc(display(field, value))}</span>`;
+  else if (['pendingCents', 'pendingEventCents', 'pendingHotelCents', 'cashDifferenceCents'].includes(field)) html = `<span class="number ${Number.isSafeInteger(value) && value !== 0 ? (field !== 'cashDifferenceCents' ? 'owes' : value < 0 ? 'owes' : 'warn-text') : ''}">${esc(display(field, value))}</span>`;
   else html = `<span class="${index === 0 ? 'record-title' : field.endsWith('Cents') ? 'number' : ''}">${esc(display(field, value))}</span>`;
   const sub = index === 0 && resource === 'personas' ? `<span class="record-sub">${esc(display('danceRole', row.danceRole))}${row.isTeam ? ' · Equipo' : ''}${row.isGuest ? ' · Invitado' : ''}${row.state && row.state !== 'accepted' ? ` · ${esc(display('state', row.state))}` : ''}</span>` : '';
   const lead = index === 0 && resource === 'personas' ? `<span class="avatar sm role-${esc(row.danceRole || 'unknown')}" aria-hidden="true">${esc(initials(row.fullName))}</span>` : '';
   return `<td><span class="cell-label">${esc(labels[field] || field)}</span>${lead ? `<span class="person-cell">${lead}<span>${html}${sub}</span></span>` : `${html}${sub}`}</td>`;
 }
 
-export function table(resource, rows, sort) {
-  const fields = resources[resource][1];
+export function table(resource, rows, sort, columns) {
+  const fields = columns || resources[resource][1];
   const head = fields.map((field) => {
     const active = sort?.key === field;
     return `<th scope="col" ${active ? `aria-sort="${sort.dir === 'desc' ? 'descending' : 'ascending'}"` : ''}>${button('sort', `${esc(labels[field] || field)}<span class="sort-mark ${active ? 'on' : ''}" aria-hidden="true">${active ? (sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>`, `data-key="${field}"`, 'th-sort')}</th>`;
@@ -172,10 +182,26 @@ export function facts(row, allowed, { compact = false } = {}) {
   return `<dl class="facts">${shown.map((field) => `<div><dt>${esc(labels[field] || field)}</dt><dd>${isPillField(field, row[field]) ? pill(field, row[field]) : esc(display(field, row[field]))}</dd></div>`).join('')}</dl>`;
 }
 
+// Orden cronológico: jornada, hora confirmada (las de horario por confirmar, al final del día), orden de programa y nombre.
+export function chrono(a, b) {
+  const x = a || {}; const y = b || {};
+  const dx = String(x.eventDate || '9999'); const dy = String(y.eventDate || '9999');
+  if (dx !== dy) return dx < dy ? -1 : 1;
+  const tx = x.timeConfirmed && x.startsAt ? String(x.startsAt) : '~'; const ty = y.timeConfirmed && y.startsAt ? String(y.startsAt) : '~';
+  if (tx !== ty) return tx < ty ? -1 : 1;
+  return (x.sortOrder ?? 0) - (y.sortOrder ?? 0) || String(x.name || '').localeCompare(String(y.name || ''), 'es');
+}
+// Agrupa por jornada, en orden cronológico, dejando «sin fecha» al final. `activityOf` extrae la actividad de cada elemento.
+export function groupByDay(items, activityOf = (item) => item) {
+  const sorted = [...items].sort((a, b) => chrono(activityOf(a), activityOf(b)));
+  const days = new Map();
+  for (const item of sorted) { const day = activityOf(item)?.eventDate || 'sin-fecha'; if (!days.has(day)) days.set(day, []); days.get(day).push(item); }
+  return days;
+}
 export function programItems(state) { return state.overview?.program || state.data?.items || []; }
 export function programList(state, key) {
   const type = programTypes.find((item) => item.key === key);
-  return programItems(state).filter((activity) => type?.categories.includes(activity.category || 'other'));
+  return programItems(state).filter((activity) => type?.categories.includes(activity.category || 'other')).sort(chrono);
 }
 
 export function programaView(state) {
@@ -184,8 +210,7 @@ export function programaView(state) {
   const pane = state.actPane;
   const todayDay = today();
   const hidden = Boolean(state.listHidden && pane);
-  const days = new Map();
-  for (const activity of list) { const day = activity.eventDate || 'sin-fecha'; if (!days.has(day)) days.set(day, []); days.get(day).push(activity); }
+  const days = groupByDay(list);
   const typeTabs = `<div class="bar-row"><div class="tabs" role="group" aria-label="Tipo de actividad">${programTypes.map((type) => { const total = programList(state, type.key).length; return total || type.key === key ? button('tab', `${esc(type.label)} · ${total}`, `data-tab="${type.key}" aria-pressed="${type.key === key}"`) : ''; }).join('')}</div></div>`;
   const left = list.length ? `<div class="prog-list" role="group" aria-label="Actividades">${[...days].map(([day, rows]) => `<div class="prog-day">${day === 'sin-fecha' ? 'Sin fecha' : esc(dayLabel(day, true))}${day === todayDay ? ' · Hoy' : ''}</div>${rows.map((activity) => button('pick-activity', `<strong>${esc(activity.name)}</strong><small>${activity.timeConfirmed ? esc(time(activity.startsAt)) : 'Horario por confirmar'}${activity.venue ? ` · ${esc(activity.venue)}` : ''}</small>${Number.isFinite(activity.entitled) ? `<span class="prog-n">${number(activity.registered)}/${number(activity.entitled)}</span>` : ''}`, `data-id="${esc(activity._id)}" aria-pressed="${activity._id === state.selActivity}" aria-label="Consultar ${esc(activity.name)}"`, 'prog-item')).join('')}`).join('')}</div>` : '<div class="empty"><p>No hay actividades de este tipo en la copia.</p></div>';
   return `<section class="panel prog-panel ${state.refreshing ? 'refreshing' : ''}">${typeTabs}<div class="prog ${hidden ? 'no-list' : ''}">${hidden ? '' : left}<div class="prog-pane">${pane ? participantsPane(state, pane, list) : `<div class="empty"><p>Selecciona una actividad para ver su lista.</p></div>`}</div></div></section>`;
@@ -274,7 +299,7 @@ function personSummary(d, list) {
   const rooms = new Map(d.rooms.map((row) => [row._id, row]));
   const tiles = [];
   if (has('pagos')) {
-    if (p.pendingCents > 0) tiles.push(personTile('pagos', 'Pagos', esc(money(p.pendingCents)), `pendiente · cobrado ${esc(money(paid))} de ${esc(money(due))}`, bar(paid ?? 0, due ?? 0, 'ok'), 'alert'));
+    if (p.pendingCents > 0) tiles.push(personTile('pagos', 'Pagos', esc(money(p.pendingCents)), `${esc(pendingSplitText(p) || `pendiente · cobrado ${money(paid)} de ${money(due)}`)}`, bar(paid ?? 0, due ?? 0, 'ok'), 'alert'));
     else if (p.refundPendingCents > 0) tiles.push(personTile('pagos', 'Pagos', esc(money(p.refundPendingCents)), 'devolución pendiente', '', 'alert'));
     else tiles.push(personTile('pagos', 'Pagos', due > 0 ? 'Al día' : 'Sin importe', due > 0 ? `cobrado ${esc(money(paid))}` : 'sin importes por pagar', due > 0 ? bar(paid ?? 0, due, 'ok') : ''));
   } else if (p.isTeam || p.isGuest) tiles.push(`<div class="tile static"><span class="kpi-title">Pagos</span><strong>Sin importe</strong><small>${p.isGuest ? 'Invitado' : 'Equipo'}: no tiene nada que pagar</small></div>`);
@@ -299,7 +324,8 @@ function personPayments(d) {
   const p = d.person;
   const payments = new Map(d.payments.map((row) => [row._id, row]));
   const paid = p.paidNetCents; const due = p.dueCents;
-  return `<div class="balance"><div class="balance-main ${p.pendingCents > 0 ? 'owes' : 'ok'}"><span>Pendiente</span><strong>${esc(money(p.pendingCents))}</strong></div><div class="balance-bar">${stackedBar([{ value: paid || 0, tone: 'ok' }, { value: p.pendingCents || 0, tone: 'bad' }])}<div class="balance-legend"><span><i class="swatch c-ok"></i>Cobrado neto ${esc(money(paid))}</span><span><i class="swatch c-bad"></i>Pendiente ${esc(money(p.pendingCents))}</span><span>Exigible ${esc(money(due))}</span></div></div></div>${facts(p, ['eventDueCents', 'hotelDueCents', 'advanceNetCents', 'eventPaidNetCents', 'hotelDirectPaidCents', 'overpaidCents', 'refundPendingCents'], { compact: true })}
+  const split = splitFinance(p);
+  return `<div class="balance"><div class="balance-main ${p.pendingCents > 0 ? 'owes' : 'ok'}"><span>Pendiente</span><strong>${esc(money(p.pendingCents))}</strong></div><div class="balance-bar">${stackedBar([{ value: paid || 0, tone: 'ok' }, { value: p.pendingCents || 0, tone: 'bad' }])}<div class="balance-legend"><span><i class="swatch c-ok"></i>Cobrado neto ${esc(money(paid))}</span><span><i class="swatch c-bad"></i>Pendiente ${esc(money(p.pendingCents))}</span><span>Exigible ${esc(money(due))}</span></div></div></div>${split ? `<div class="split-cards">${[['Baztango', split.event], ['Hotel', split.hotel]].map(([title, s]) => `<div class="split-card ${s.pending > 0 ? 'owes' : ''}"><span class="kpi-title">${title}</span><strong>${esc(money(s.pending))}</strong><small>pendiente · cobrado ${esc(money(s.paid))} de ${esc(money(s.due))}</small>${bar(Math.max(s.paid, 0), s.due, s.pending > 0 ? 'warn' : 'ok')}</div>`).join('')}</div>` : ''}${facts(p, split ? ['advanceNetCents', 'hotelDirectPaidCents', 'overpaidCents', 'refundPendingCents'] : ['eventDueCents', 'hotelDueCents', 'advanceNetCents', 'eventPaidNetCents', 'hotelDirectPaidCents', 'overpaidCents', 'refundPendingCents'], { compact: true })}
 ${d.payments.length ? `<div class="detail-section"><h3>Movimientos económicos</h3><ul class="timeline">${d.payments.map((pay) => `<li><span class="tl-date">${esc(date(pay.paymentDate || pay.occurredAt))}</span><span class="tl-main"><strong>${esc(pay.paymentCode || 'Movimiento')}</strong><small>${esc(display('method', pay.method))} · ${esc(display('destination', pay.destination))}${pay.payerName ? ` · ${esc(pay.payerName)}` : ''}</small></span><span class="tl-amount">${esc(money(pay.amountCents))}</span>${pay.state && pay.state !== 'valid' ? pill('state', pay.state) : ''}</li>`).join('')}</ul></div>` : ''}
 ${d.allocations.length ? `<div class="detail-section"><h3>Parte imputada a esta persona</h3><ul class="timeline">${d.allocations.map((alloc) => `<li><span class="tl-date">${esc(display('destination', alloc.destination))}</span><span class="tl-main"><strong>${esc(payments.get(ref(alloc.paymentRef))?.paymentCode || 'Movimiento')}</strong></span><span class="tl-amount">${esc(money(alloc.amountCents))}</span></li>`).join('')}</ul></div>` : ''}`;
 }
@@ -307,19 +333,19 @@ ${d.allocations.length ? `<div class="detail-section"><h3>Parte imputada a esta 
 // Lo que le corresponde a esta persona, por jornada y sin mezclar asistencias.
 function personProgram(d) {
   const activities = new Map(d.activities.map((row) => [row._id, row]));
-  const rows = d.participations.filter(isEntitled).map((part) => ({ part, act: activities.get(ref(part.activityRef)) })).sort((x, y) => String(x.act?.startsAt || x.act?.eventDate || '').localeCompare(String(y.act?.startsAt || y.act?.eventDate || '')) || String(x.act?.name || '').localeCompare(String(y.act?.name || ''), 'es'));
-  const days = new Map();
-  for (const row of rows) { const day = row.act?.eventDate || 'sin-fecha'; if (!days.has(day)) days.set(day, []); days.get(day).push(row); }
+  const rows = d.participations.filter(isEntitled).map((part) => ({ part, act: activities.get(ref(part.activityRef)) }));
+  const days = groupByDay(rows, (row) => row.act);
   return `<div class="day-groups">${[...days].map(([day, items]) => `<section class="day-group"><h3>${day === 'sin-fecha' ? 'Sin fecha' : esc(dayLabel(day, true))}<small>${items.length} ${items.length === 1 ? 'actividad' : 'actividades'}</small></h3><ul class="timeline">${items.map(({ part, act }) => `<li><span class="tl-date">${act?.timeConfirmed ? esc(time(act.startsAt)) : 'Por confirmar'}</span><span class="tl-main"><strong>${esc(act?.name || part.title || 'Actividad')}</strong><small>${esc(display('category', act?.category))}${act?.venue ? ` · ${esc(act.venue)}` : ''}</small></span>${part.entitlement === 'extra' ? pill('entitlement', 'extra') : ''}</li>`).join('')}</ul></section>`).join('')}</div>`;
 }
 
 function personAttendance(d) {
   const activities = new Map(d.activities.map((row) => [row._id, row]));
-  const rows = d.participations.map((part) => ({ part, act: activities.get(ref(part.activityRef)) })).sort((x, y) => String(x.act?.startsAt || x.act?.eventDate || '').localeCompare(String(y.act?.startsAt || y.act?.eventDate || '')));
+  const rows = d.participations.map((part) => ({ part, act: activities.get(ref(part.activityRef)) }));
+  const days = groupByDay(rows, (row) => row.act);
   const registered = rows.filter(({ part }) => part.attendanceState === 'registered').length;
   const outside = rows.filter(({ part }) => !isEntitled(part) && part.attendanceState === 'registered').length;
   return `<div class="pill-row"><span class="pill ok">${registered} registradas</span><span class="pill neutral">${rows.length - registered} sin registro</span>${outside ? `<span class="pill warn">${outside} fuera de derecho</span>` : ''}</div>
-<div class="scroll auto" tabindex="0" role="region" aria-label="Asistencias de la persona"><table class="record-table"><caption class="sr-only">Asistencias</caption><thead><tr><th scope="col">Actividad</th><th scope="col">Jornada</th><th scope="col">Derecho</th><th scope="col">Asistencia</th></tr></thead><tbody>${rows.map(({ part, act }) => `<tr><td><span class="cell-label">Actividad</span><strong>${esc(act?.name || part.title || 'Actividad')}</strong>${part.needsReview ? '<span class="record-sub inline">Revisar</span>' : ''}</td><td><span class="cell-label">Jornada</span>${esc(act ? dayLabel(act.eventDate) : 'Sin dato')}</td><td><span class="cell-label">Derecho</span>${pill('entitlement', part.entitlement || 'none')}</td><td><span class="cell-label">Asistencia</span>${pill('attendanceState', part.attendanceState || 'unknown')}</td></tr>`).join('')}</tbody></table></div>`;
+<div class="scroll auto" tabindex="0" role="region" aria-label="Asistencias de la persona"><table class="record-table"><caption class="sr-only">Asistencias</caption><thead><tr><th scope="col">Hora</th><th scope="col">Actividad</th><th scope="col">Derecho</th><th scope="col">Asistencia</th></tr></thead><tbody>${[...days].map(([day, items]) => `<tr class="day-row"><td colspan="4"><strong>${day === 'sin-fecha' ? 'Sin fecha' : esc(dayLabel(day, true))}</strong></td></tr>${items.map(({ part, act }) => `<tr><td><span class="cell-label">Hora</span>${act?.timeConfirmed ? esc(time(act.startsAt)) : 'Por confirmar'}</td><td><span class="cell-label">Actividad</span><strong>${esc(act?.name || part.title || 'Actividad')}</strong>${part.needsReview ? '<span class="record-sub inline">Revisar</span>' : ''}</td><td><span class="cell-label">Derecho</span>${pill('entitlement', part.entitlement || 'none')}</td><td><span class="cell-label">Asistencia</span>${pill('attendanceState', part.attendanceState || 'unknown')}</td></tr>`).join('')}`).join('')}</tbody></table></div>`;
 }
 
 function personStays(d) {

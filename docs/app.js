@@ -1,7 +1,7 @@
 import { config } from './config.js';
 import { retrySeconds } from './retry.js';
-import { sections, resources, tabs, labels, booleanFields, quickChips, typeKeyFor } from './catalogue.js?v=1.2.0';
-import { esc, ref, money, date, shiftDay, display, initials, pill, button, csvCell } from './format.js?v=1.2.0';
+import { sections, resources, tabs, labels, booleanFields, quickChips, typeKeyFor, saldosColumns } from './catalogue.js?v=1.2.0';
+import { esc, ref, money, date, shiftDay, display, initials, pill, button, csvCell, withSplit } from './format.js?v=1.2.0';
 import { icon, navButton, loginView, pendingView, skeleton, dashboardView, listView, programaView, programList, programItems, occupancyView, personView, roomView, facts } from './views.js?v=1.2.0';
 
 const VERSION = '1.2.0';
@@ -306,8 +306,9 @@ function download(name, header, rows) {
 }
 async function exportList() {
   const resource = state.resource;
-  const fields = exportColumns[resource] || resources[resource][1];
-  download(`baztango-${resource}`, fields.map((field) => labels[field] || field), state.data.items.map((row) => fields.map((field) => csvValue(field, row[field]))));
+  const saldos = state.route === 'pagos' && resource === 'personas';
+  const fields = saldos ? saldosColumns : exportColumns[resource] || resources[resource][1];
+  download(`baztango-${resource}`, fields.map((field) => labels[field] || field), state.data.items.map((row) => { const data = saldos ? withSplit(row) : row; return fields.map((field) => csvValue(field, data[field])); }));
 }
 async function exportActivity() {
   const fields = state.activityQuery.mode === 'attendance' ? ['entitlement', 'attendanceState', 'validRecordCount', 'needsReview'] : ['entitlement'];

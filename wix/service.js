@@ -71,7 +71,10 @@ export function createService({ repository, getPassword, now = Date.now }) {
         if (!['default', 'name', 'pendingDesc', 'date'].includes(order)) fail(400, 'INVALID_QUERY');
         result = await repository.list({ eventId, versionId, resource, search: normalize(search), filters, page, limit, order });
       } else if (body.action === 'summary') result = await repository.summary(eventId, versionId);
-      else if (body.action === 'overview') result = await repository.overview(eventId, versionId);
+      else if (body.action === 'overview') {
+        if (typeof repository.overview !== 'function') fail(400, 'INVALID_QUERY');
+        result = await repository.overview(eventId, versionId);
+      }
       else if (body.action === 'detail') result = await repository.detail(eventId, versionId, identifier(body.personId));
       else if (body.action === 'requestDetail') result = await repository.requestDetail(eventId, versionId, identifier(body.requestId));
       else if (body.action === 'roomDetail') {

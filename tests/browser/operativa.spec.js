@@ -61,3 +61,29 @@ test('side menu can be hidden and tables use the full height with sortable colum
   await expect(page.getByRole('combobox',{name:'Actividad'})).toBeVisible();
   await expect(page.locator('.prog-list')).toHaveCount(0);
 });
+
+test('collected and pending amounts are split between Baztango and Hotel',async({page})=>{
+  await installApi(page); await login(page);
+  await expect(page.getByText('Cobros: Baztango y Hotel')).toBeVisible();
+  await page.getByRole('button',{name:'Pagos',exact:true}).first().click();
+  await expect(page.getByRole('button',{name:'Pendiente Baztango'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Pendiente Hotel'})).toBeVisible();
+  await expect(page.getByRole('cell',{name:/50,00/}).first()).toBeVisible();
+  await page.getByRole('button',{name:/Ver ficha de/}).click();
+  await page.getByRole('button',{name:'Pagos',exact:true}).last().click();
+  await expect(page.getByText('Baztango',{exact:true})).toBeVisible();
+  await expect(page.getByText('Hotel',{exact:true})).toBeVisible();
+});
+
+test('person program and attendance are grouped by day in chronological order',async({page})=>{
+  await installApi(page); await login(page);
+  await page.getByRole('button',{name:'Clientes',exact:true}).first().click();
+  await page.getByRole('button',{name:/Ver ficha de/}).click();
+  await page.getByRole('button',{name:'Asistencias · 1/2'}).click();
+  const days=await page.locator('.day-row').allInnerTexts();
+  expect(days.length).toBe(2);
+  expect(days[0]).toMatch(/26/); expect(days[1]).toMatch(/27/);
+  await page.getByRole('button',{name:'Programa · 2'}).click();
+  const heads=await page.locator('.day-group h3').allInnerTexts();
+  expect(heads[0]).toMatch(/26/); expect(heads[1]).toMatch(/27/);
+});

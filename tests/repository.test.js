@@ -137,7 +137,7 @@ test('compact storage preserves list filters, details and summary without exposi
 
 test('overview aggregates people, program and lodging nights without private fields', async () => {
   const people = [
-    { _id: 'p1', ...scope, state: 'accepted', fullName: 'A Uno', paymentState: 'partial', danceRole: 'leader', packageName: 'Completo', country: 'ES', dueCents: 1000, paidNetCents: 400, pendingCents: 600, refundPendingCents: 0, overpaidCents: 0, arrivalState: 'registered', arrivalDate: '2026-11-26', email: 'privado@example.invalid' },
+    { _id: 'p1', ...scope, state: 'accepted', fullName: 'A Uno', paymentState: 'partial', danceRole: 'leader', packageName: 'Completo', country: 'ES', dueCents: 1000, paidNetCents: 400, pendingCents: 600, eventDueCents: 700, hotelDueCents: 300, eventPaidNetCents: 300, refundPendingCents: 0, overpaidCents: 0, arrivalState: 'registered', arrivalDate: '2026-11-26', email: 'privado@example.invalid' },
     { _id: 'p2', ...scope, state: 'accepted', fullName: 'B Dos', paymentState: 'settled', danceRole: 'follower', dueCents: 500, paidNetCents: 500, pendingCents: 0, refundPendingCents: 0, overpaidCents: 0, arrivalState: 'notRegistered' },
     { _id: 'p3', ...scope, state: 'cancelled', pendingCents: 0, dueCents: 0, paidNetCents: 0, refundPendingCents: 50, overpaidCents: 0 }
   ];
@@ -161,6 +161,7 @@ test('overview aggregates people, program and lodging nights without private fie
   const result = await createRepository(data).overview('e1', 'v1');
   assert.equal(result.totals.accepted, 2); assert.equal(result.totals.arrived, 1); assert.equal(result.totals.housed, 2);
   assert.equal(result.finance.pendingCents, 600); assert.equal(result.finance.dueCents, 1500); assert.equal(result.finance.withDebt, 1);
+  assert.deepEqual(result.finance.event, { dueCents: 700, paidNetCents: 300, pendingCents: 400 }); assert.deepEqual(result.finance.hotel, { dueCents: 300, paidNetCents: 100, pendingCents: 200 }); assert.equal(result.finance.splitUnknown, 2);
   assert.deepEqual(result.byPaymentState.map((row) => row.value).sort(), ['partial', 'settled']);
   assert.deepEqual(result.debtors.map((row) => row._id), ['p1']);
   assert.deepEqual({ entitled: result.program[0].entitled, registered: result.program[0].registered, missing: result.program[0].missing, issues: result.program[0].issues }, { entitled: 2, registered: 2, missing: 1, issues: 1 });

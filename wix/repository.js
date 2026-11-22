@@ -8,6 +8,24 @@ const pick = (row, fields) => Object.fromEntries(fields.split(' ').filter((field
 const searchFields = { personas: 'searchText', solicitudes: 'searchText', reservas: 'reservationCode', pagos: 'paymentCode', actividades: 'name', habitaciones: 'unitCode', gastos: 'concept', movimientos: 'concept', cajas: 'businessDate' };
 const references = { reservationRef: 'reservas', personRef: 'personas', paymentRef: 'pagos', expenseRef: 'gastos', activityRef: 'actividades', roomRef: 'habitaciones', cashSessionRef: 'cajas' };
 
+// Reparto Baztango (evento) / Hotel: lo cobrado en destino hotel es lo cobrado neto total menos lo cobrado neto en el evento.
+export function financeSplit(person) {
+  const { eventDueCents: eventDue, hotelDueCents: hotelDue, eventPaidNetCents: eventPaid, paidNetCents: paid } = person;
+  if (![eventDue, hotelDue, eventPaid, paid].every(Number.isSafeInteger)) return null;
+  const hotelPaid = paid - eventPaid;
+  return { event: { dueCents: eventDue, paidNetCents: eventPaid, pendingCents: Math.max(eventDue - eventPaid, 0) }, hotel: { dueCents: hotelDue, paidNetCents: hotelPaid, pendingCents: Math.max(hotelDue - hotelPaid, 0) } };
+}
+function financeByDestination(people) {
+  const total = () => ({ dueCents: 0, paidNetCents: 0, pendingCents: 0 });
+  const out = { event: total(), hotel: total(), splitUnknown: 0 };
+  for (const person of people) {
+    const split = financeSplit(person);
+    if (!split) { out.splitUnknown++; continue; }
+    for (const side of ['event', 'hotel']) for (const key of ['dueCents', 'paidNetCents', 'pendingCents']) out[side][key] += split[side][key];
+  }
+  return out;
+}
+
 export function createRepository(data, collectionIds = {}) {
   const collectionId = (name) => collectionIds[name] || name;
   const base = (resource, eventId, versionId) => createSnapshotQuery(data, schema[resource][0], collectionId(schema[resource][0]), eventId, versionId);
@@ -216,12 +234,12 @@ export function createRepository(data, collectionIds = {}) {
     const arrivalsByDate = countBy(arrived.filter((person) => isoDay(person.arrivalDate)), (person) => isoDay(person.arrivalDate)).sort((a, b) => a.value.localeCompare(b.value)).slice(0, 31);
     const debtors = accepted.filter((person) => Number.isSafeInteger(person.pendingCents) && person.pendingCents > 0)
       .sort((a, b) => b.pendingCents - a.pendingCents || String(a.fullName || '').localeCompare(String(b.fullName || ''))).slice(0, 8)
-      .map((person) => pick(person, '_id fullName personCode packageName pendingCents paymentState'));
+      .map((person) => pick(person, '_id fullName personCode packageName pendingCents paymentState eventDueCents hotelDueCents eventPaidNetCents paidNetCents'));
     const sessionsWithDifference = cashSessions.filter((session) => Number.isSafeInteger(session.cashDifferenceCents) && session.cashDifferenceCents !== 0).length;
     await context(eventId, versionId);
     return {
       totals: { people: people.length, accepted: accepted.length, cancelled: people.filter((person) => person.state === 'cancelled').length, review: people.filter((person) => person.state === 'review').length, arrived: arrived.length, housed: new Set(reservedStays.map((stay) => refId(stay.personRef))).size, team: accepted.filter((person) => person.isTeam).length, guests: accepted.filter((person) => person.isGuest).length },
-      finance: { dueCents: sumKnown('dueCents'), paidNetCents: sumKnown('paidNetCents'), pendingCents, refundPendingCents: sumKnown('refundPendingCents'), overpaidCents: sumKnown('overpaidCents'), withDebt: accepted.filter((person) => person.pendingCents > 0).length, withRefund: people.filter((person) => person.refundPendingCents > 0).length },
+      finance: { ...financeByDestination(people), dueCents: sumKnown('dueCents'), paidNetCents: sumKnown('paidNetCents'), pendingCents, refundPendingCents: sumKnown('refundPendingCents'), overpaidCents: sumKnown('overpaidCents'), withDebt: accepted.filter((person) => person.pendingCents > 0).length, withRefund: people.filter((person) => person.refundPendingCents > 0).length },
       byPaymentState: countBy(accepted, (person) => unknown(person.paymentState)),
       byRole: countBy(accepted, (person) => unknown(person.danceRole)),
       byPackage: countBy(accepted, (person) => person.packageName || 'Sin paquete').slice(0, 8),
