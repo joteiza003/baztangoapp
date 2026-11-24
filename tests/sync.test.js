@@ -74,6 +74,27 @@ function fixture() {
   return { db, eventId, versionId, event, row, rows, reservation, person, begin, send, chunk, commit, load };
 }
 
+test('signed event adjustment preserves a nonnegative guest total on commit', async () => {
+  const f = fixture();
+  Object.assign(f.person, { isGuest: true, eventDueCents: -3500, hotelDueCents: 3500,
+    dueCents: 0, paidNetCents: 2500, pendingCents: 0, overpaidCents: 2500 });
+  await f.load();
+  assert.equal((await f.commit()).status, 200);
+  assert.equal(f.db.tables.BTPersonas[f.person._id].eventDueCents, -3500);
+});
+
+test('signed event share does not allow negative hotel or total or broken sums', async () => {
+  for (const change of [{ hotelDueCents: -1 }, { dueCents: -1 }]) {
+    const f = fixture(); await f.send(f.begin());
+    assert.equal((await f.send(f.chunk('BTPersonas', [{ ...f.person, ...change }]))).body.error, 'INVALID_INTEGER');
+  }
+  const f = fixture();
+  Object.assign(f.person, { eventDueCents: -3500, hotelDueCents: 3500 });
+  await f.load();
+  assert.equal((await f.commit()).body.error, 'FINANCE_MISMATCH');
+  assert.equal(f.db.tables.BTEventos[f.eventId].currentVersionRef, undefined);
+});
+
 test('canonical JSON omits null/system fields, normalizes At and preserves array order', () => {
   assert.equal(canonicalJSON({ z: null, b: [2, 1], a: { z: 1, A: 2 }, capturedAt: '2026-11-17T13:00:00+01:00', _owner: 'ignored' }), '{"a":{"A":2,"z":1},"b":[2,1],"capturedAt":"2026-11-17T12:00:00.000Z"}');
   assert.equal(hashRows([{ _id: 'b', x: null }, { _id: 'a', x: new Date(instant) }]), hashRows([{ _id: 'a', x: new Date(instant) }, { _id: 'b' }]));
@@ -384,3 +405,4 @@ test('compressed data is bounded before parsing and supports large valid base64 
   const rows = Array.from({ length: 5000 }, (_, i) => ({ _id: randomUUID(), value: randomUUID(), index: i }));
   assert.deepEqual(decodeRows(encodeRows(rows)), rows);
 });
+

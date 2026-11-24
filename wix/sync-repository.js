@@ -19,7 +19,9 @@ fields.BTEventos = new Set('_id title eventKey sourceEditionId year startDate en
 fields.BTVersiones = new Set('_id title versionKey eventRef state capturedAt publishedAt schemaVersion sourceLabel contentHash personCount paymentCount recordCount validationSummary'.split(' '));
 const booleanFields = new Set('isActive isTeam isGuest dietaryKnown hasDataIssues timeConfirmed isGeneralArrival eligible needsReview isAvailable'.split(' '));
 const integerFields = new Set('year warningMinutes staleMinutes schemaVersion personCount paymentCount recordCount capacity sortOrder validRecordCount operationCount declaredPeopleCount'.split(' '));
-const nonnegativeCents = new Set('eventDueCents hotelDueCents dueCents pendingCents overpaidCents refundPendingCents openingFloatCents grossReceiptsCents refundsCents expensesPaidCents withdrawalsCents totalCents'.split(' '));
+// Manual/guest discounts can produce a signed event share; the total and
+// hotel share remain nonnegative and validatePerson checks their exact sum.
+const nonnegativeCents = new Set('hotelDueCents dueCents pendingCents overpaidCents refundPendingCents openingFloatCents grossReceiptsCents refundsCents expensesPaidCents withdrawalsCents totalCents'.split(' '));
 export const SYNC_REFERENCES = Object.freeze({ reservationRef: 'BTReservas', payerRef: 'BTPersonas', originPaymentRef: 'BTPagos', paymentRef: 'BTPagos', personRef: 'BTPersonas', activityRef: 'BTActividades', roomRef: 'BTHabitaciones', cashSessionRef: 'BTCajas', expenseRef: 'BTGastos', parentRequestRef: 'BTSolicitudes', promotedReservationRef: 'BTReservas' });
 const requiredRefs = { BTPersonas: ['reservationRef'], BTImputaciones: ['paymentRef', 'personRef'], BTParticipaciones: ['personRef', 'activityRef'], BTEstancias: ['personRef'] };
 
@@ -241,3 +243,4 @@ export function createSyncRepository(wixData, collectionIds = {}, { now = Date.n
   }
   return { get, byKey, withLock, insert, saveVersion, bulkSave, savePacked, cleanupFailed, readRows, activate };
 }
+
